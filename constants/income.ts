@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/theme";
 
-import type { Account } from "./income.types";
+import type { Account } from "@/interfaces/income";
 
 export const BCO = {
   bg: "#353537",
@@ -97,17 +97,32 @@ export const ACCOUNTS: Account[] = [
   },
 ];
 
-export const CHART_DATA = [
-  { value: 50, label: "Ene", frontColor: Colors.purple },
-  { value: 80, label: "Feb", frontColor: Colors.purple },
-  { value: 90, label: "Mar", frontColor: Colors.purple },
-  { value: 100, label: "Abr", frontColor: Colors.yellow },
-  { value: 110, label: "May", frontColor: Colors.purple },
-  { value: 120, label: "Jun", frontColor: Colors.purple },
-  { value: 130, label: "Jul", frontColor: Colors.purple },
-  { value: 140, label: "Ago", frontColor: Colors.green },
-  { value: 150, label: "Sep", frontColor: Colors.purple },
-  { value: 160, label: "Oct", frontColor: Colors.purple },
-  { value: 170, label: "Nov", frontColor: Colors.purple },
-  { value: 180, label: "Dic", frontColor: Colors.yellow },
+export const INCOME_CHART_DATA = [
+  { value: 1_150_000, label: "Ene", frontColor: Colors.purple },
+  { value: 980_000, label: "Feb", frontColor: Colors.purple },
+  { value: 1_320_000, label: "Mar", frontColor: Colors.purple },
+  { value: 1_800_000, label: "Abr", frontColor: Colors.yellow },
+  { value: 1_600_000, label: "May", frontColor: Colors.purple },
+  { value: 2_050_000, label: "Jun", frontColor: Colors.purple },
+  { value: 1_900_000, label: "Jul", frontColor: Colors.purple },
+  { value: 2_300_000, label: "Ago", frontColor: Colors.green },
+  { value: 2_100_000, label: "Sep", frontColor: Colors.purple },
+  { value: 2_450_000, label: "Oct", frontColor: Colors.purple },
+  { value: 2_250_000, label: "Nov", frontColor: Colors.purple },
+  { value: 2_800_000, label: "Dic", frontColor: Colors.yellow },
+];
+
+export const ASSETS_CHART_DATA = [
+  { value: 8_500_000, label: "Ene", frontColor: Colors.green },
+  { value: 8_650_000, label: "Feb", frontColor: Colors.green },
+  { value: 8_700_000, label: "Mar", frontColor: Colors.green },
+  { value: 8_950_000, label: "Abr", frontColor: Colors.yellow },
+  { value: 9_150_000, label: "May", frontColor: Colors.green },
+  { value: 9_300_000, label: "Jun", frontColor: Colors.green },
+  { value: 9_650_000, label: "Jul", frontColor: Colors.green },
+  { value: 9_900_000, label: "Ago", frontColor: Colors.yellow },
+  { value: 10_100_000, label: "Sep", frontColor: Colors.green },
+  { value: 10_450_000, label: "Oct", frontColor: Colors.green },
+  { value: 10_600_000, label: "Nov", frontColor: Colors.green },
+  { value: 11_000_000, label: "Dic", frontColor: Colors.yellow },
 ];

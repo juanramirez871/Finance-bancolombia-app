@@ -122,9 +122,66 @@ export const styles = StyleSheet.create({
     padding: 16,
     overflow: "hidden",
   },
+  chartHint: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: BCO.muted,
+  },
+  chartSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    gap: 10,
+  },
+  chartSummaryLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: BCO.text,
+  },
+  chartSummaryValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.yellow,
+  },
   chartLabel: {
     fontSize: 10,
     color: BCO.muted,
+  },
+  chartYLabel: {
+    fontSize: 11,
+    color: BCO.muted,
+  },
+  pointLabelContainer: {
+    backgroundColor: Colors.yellow,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  pointLabelText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  tooltipContainer: {
+    width: 140,
+    height: 64,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
+  },
+  tooltipTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  tooltipValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#111827",
+    marginTop: 2,
   },
   modalSafe: {
     flex: 1,

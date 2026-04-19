@@ -1,4 +1,4 @@
-import type { Transaction, TransactionSection } from "./income.types";
+import type { Transaction, TransactionSection } from "@/interfaces/income";
 
 export function toDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);

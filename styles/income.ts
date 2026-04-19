@@ -205,7 +205,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   dateHeader: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "600",
     color: BCO.muted,
     textTransform: "capitalize",

@@ -9,7 +9,7 @@ export default function ExpenseScreen() {
         contentContainerStyle={styles.scrollContainer}
       >
         <View style={styles.container}>
-          <Text>Welcome to expense</Text>
+          <Text>Welcome to Expense</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

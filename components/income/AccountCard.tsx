@@ -18,9 +18,11 @@ type AccountCardStyles = {
 export function AccountCard({
   account,
   styles,
+  onPressAccount,
 }: {
   account: Account;
   styles?: AccountCardStyles & Record<string, unknown>;
+  onPressAccount?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const preview = account.transactions;
@@ -29,7 +31,17 @@ export function AccountCard({
   return (
     <View style={s.section}>
       <View style={s.sectionHeader}>
-        <Text style={s.sectionTitle}>{account.label}</Text>
+        {onPressAccount ? (
+          <TouchableOpacity
+            onPress={onPressAccount}
+            style={{ flex: 1 }}
+            hitSlop={6}
+          >
+            <Text style={s.sectionTitle}>{account.label}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={s.sectionTitle}>{account.label}</Text>
+        )}
         <TouchableOpacity onPress={() => setExpanded(true)}>
           <Text style={s.seeAll}>Ver todas</Text>
         </TouchableOpacity>

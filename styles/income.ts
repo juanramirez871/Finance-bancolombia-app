@@ -204,12 +204,19 @@ export const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "wrap",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 12,
     gap: 8,
     borderBottomWidth: 1,
     borderBottomColor: BCO.divider,
+  },
+  filterChipsGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
   filterChip: {
     flexDirection: "row",
@@ -222,6 +229,9 @@ export const styles = StyleSheet.create({
     borderColor: BCO.border,
     backgroundColor: BCO.card,
   },
+  filterChipEqual: {
+    flex: 1,
+  },
   filterChipActive: {
     backgroundColor: Colors.purple,
     borderColor: Colors.purple,
@@ -230,6 +240,7 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: BCO.text,
     fontWeight: "500",
+    flexShrink: 1,
   },
   filterChipTextActive: {
     color: Colors.white,
@@ -239,14 +250,15 @@ export const styles = StyleSheet.create({
     color: BCO.muted,
   },
   clearBtn: {
-    marginLeft: "auto",
-    alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: BCO.card,
     borderWidth: 1,
     borderColor: BCO.border,
+  },
+  clearBtnHidden: {
+    opacity: 0,
   },
   clearText: {
     fontSize: 13,

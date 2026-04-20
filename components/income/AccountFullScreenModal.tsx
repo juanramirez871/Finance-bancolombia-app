@@ -97,6 +97,8 @@ export function AccountFullScreenModal({
     setEndDate(null);
   };
 
+  const hasFilters = Boolean(startDate || endDate);
+
   return (
     <Modal
       visible={visible}
@@ -113,51 +115,67 @@ export function AccountFullScreenModal({
         </View>
 
         <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[styles.filterChip, startDate && styles.filterChipActive]}
-            onPress={() => setPicker("from")}
-          >
-            <Octicons
-              name="calendar"
-              size={13}
-              color={startDate ? Colors.white : Colors.purple}
-            />
-            <Text
+          <View style={styles.filterChipsGroup}>
+            <TouchableOpacity
               style={[
-                styles.filterChipText,
-                startDate && styles.filterChipTextActive,
+                styles.filterChip,
+                styles.filterChipEqual,
+                startDate && styles.filterChipActive,
               ]}
+              onPress={() => setPicker("from")}
             >
-              {startDate ? fmt(startDate) : "Desde"}
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={styles.filterSep}>→</Text>
-
-          <TouchableOpacity
-            style={[styles.filterChip, endDate && styles.filterChipActive]}
-            onPress={() => setPicker("to")}
-          >
-            <Octicons
-              name="calendar"
-              size={13}
-              color={endDate ? Colors.white : Colors.purple}
-            />
-            <Text
-              style={[
-                styles.filterChipText,
-                endDate && styles.filterChipTextActive,
-              ]}
-            >
-              {endDate ? fmt(endDate) : "Hasta"}
-            </Text>
-          </TouchableOpacity>
-
-          {(startDate || endDate) && (
-            <TouchableOpacity onPress={clearFilters} style={styles.clearBtn}>
-              <Text style={styles.clearText}>Limpiar</Text>
+              <Octicons
+                name="calendar"
+                size={13}
+                color={startDate ? Colors.white : Colors.purple}
+              />
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[
+                  styles.filterChipText,
+                  startDate && styles.filterChipTextActive,
+                ]}
+              >
+                {startDate ? fmt(startDate) : "Desde"}
+              </Text>
             </TouchableOpacity>
-          )}
+
+            <Text style={styles.filterSep}>→</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.filterChip,
+                styles.filterChipEqual,
+                endDate && styles.filterChipActive,
+              ]}
+              onPress={() => setPicker("to")}
+            >
+              <Octicons
+                name="calendar"
+                size={13}
+                color={endDate ? Colors.white : Colors.purple}
+              />
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[
+                  styles.filterChipText,
+                  endDate && styles.filterChipTextActive,
+                ]}
+              >
+                {endDate ? fmt(endDate) : "Hasta"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            onPress={clearFilters}
+            style={[styles.clearBtn, !hasFilters && styles.clearBtnHidden]}
+            disabled={!hasFilters}
+          >
+            <Text style={styles.clearText}>Limpiar</Text>
+          </TouchableOpacity>
         </View>
 
         {picker !== null && Platform.OS === "android" && (

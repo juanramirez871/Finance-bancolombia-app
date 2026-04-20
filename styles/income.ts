@@ -204,6 +204,7 @@ export const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     paddingHorizontal: 20,
     paddingVertical: 12,
     gap: 8,
@@ -238,10 +239,56 @@ export const styles = StyleSheet.create({
     color: BCO.muted,
   },
   clearBtn: {
-    marginLeft: 4,
+    marginLeft: "auto",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: BCO.card,
+    borderWidth: 1,
+    borderColor: BCO.border,
   },
   clearText: {
     fontSize: 13,
+    color: BCO.muted,
+    fontWeight: "600",
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  pickerSheet: {
+    backgroundColor: BCO.bg,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 1,
+    borderColor: BCO.divider,
+    paddingBottom: 16,
+  },
+  pickerSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: BCO.divider,
+  },
+  pickerSheetTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: BCO.text,
+  },
+  pickerSheetAction: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.yellow,
+  },
+  pickerSheetCancel: {
+    fontSize: 14,
+    fontWeight: "600",
     color: BCO.muted,
   },
   pickerDone: {
@@ -273,7 +320,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 60,
+    paddingTop: 0,
   },
   emptyText: {
     fontSize: 15,
@@ -283,5 +330,10 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: 140,
     transform: [{ translateY: -50 }],
+  },
+  failedImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 12,
   },
 });

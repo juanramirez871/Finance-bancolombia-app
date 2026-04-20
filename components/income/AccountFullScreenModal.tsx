@@ -2,10 +2,12 @@ import { Colors } from "@/constants/theme";
 import { groupTransactionsByDate, toDate } from "@/utils/income";
 import Octicons from "@expo/vector-icons/Octicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Image } from "expo-image";
 import { useMemo, useState } from "react";
 import {
   Modal,
   Platform,
+  Pressable,
   SectionList,
   Text,
   TouchableOpacity,
@@ -28,6 +30,37 @@ export function AccountFullScreenModal({
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [picker, setPicker] = useState<"from" | "to" | null>(null);
+
+  const handleSelectDate = (selected: Date | null) => {
+    if (!selected) return;
+
+    if (picker === "from") {
+      setStartDate(selected);
+      if (endDate && selected > endDate) setEndDate(selected);
+      return;
+    }
+
+    if (picker === "to") {
+      setEndDate(selected);
+      if (startDate && selected < startDate) setStartDate(selected);
+    }
+  };
+
+  const pickerValue =
+    picker === "from"
+      ? (startDate ?? new Date())
+      : picker === "to"
+        ? (endDate ?? new Date())
+        : new Date();
+
+  const maximumDate =
+    picker === "from"
+      ? endDate
+        ? new Date(Math.min(endDate.getTime(), Date.now()))
+        : new Date()
+      : new Date();
+
+  const minimumDate = picker === "to" ? (startDate ?? undefined) : undefined;
   const filteredTx = useMemo(() => {
     return account.transactions.filter((tx) => {
       const txDate = toDate(tx.date);
@@ -127,35 +160,69 @@ export function AccountFullScreenModal({
           )}
         </View>
 
-        {picker !== null && (
+        {picker !== null && Platform.OS === "android" && (
           <DateTimePicker
-            value={
-              picker === "from"
-                ? (startDate ?? new Date())
-                : (endDate ?? new Date())
-            }
+            value={pickerValue}
             mode="date"
-            display={Platform.OS === "ios" ? "inline" : "default"}
+            display="default"
             onChange={(_, selected) => {
-              if (picker === "from") setStartDate(selected ?? null);
-              else setEndDate(selected ?? null);
-              if (Platform.OS === "android") setPicker(null);
+              handleSelectDate(selected ?? null);
+              setPicker(null);
             }}
-            maximumDate={new Date()}
+            maximumDate={maximumDate}
+            minimumDate={minimumDate}
           />
         )}
 
         {picker !== null && Platform.OS === "ios" && (
-          <TouchableOpacity
-            style={styles.pickerDone}
-            onPress={() => setPicker(null)}
+          <Modal
+            transparent
+            animationType="fade"
+            visible
+            presentationStyle="overFullScreen"
+            onRequestClose={() => setPicker(null)}
           >
-            <Text style={styles.pickerDoneText}>Listo</Text>
-          </TouchableOpacity>
+            <Pressable
+              style={styles.pickerOverlay}
+              onPress={() => setPicker(null)}
+            >
+              <Pressable style={styles.pickerSheet} onPress={() => {}}>
+                <View style={styles.pickerSheetHeader}>
+                  <TouchableOpacity
+                    onPress={() => setPicker(null)}
+                    hitSlop={12}
+                  >
+                    <Text style={styles.pickerSheetCancel}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.pickerSheetTitle}>
+                    {picker === "from" ? "Desde" : "Hasta"}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setPicker(null)}
+                    hitSlop={12}
+                  >
+                    <Text style={styles.pickerSheetAction}>Listo</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={pickerValue}
+                  mode="date"
+                  display="spinner"
+                  onChange={(_, selected) => handleSelectDate(selected ?? null)}
+                  maximumDate={maximumDate}
+                  minimumDate={minimumDate}
+                />
+              </Pressable>
+            </Pressable>
+          </Modal>
         )}
 
         {filteredTx.length === 0 ? (
           <View style={styles.emptyState}>
+            <Image
+              source={require("@/assets/images/failed.png")}
+              style={styles.failedImage}
+            />
             <Text style={styles.emptyText}>
               Sin transacciones en este rango
             </Text>

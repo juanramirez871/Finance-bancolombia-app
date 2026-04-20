@@ -244,6 +244,15 @@ export default function IncomeScreen() {
             />
           </View>
         </View>
+
+        <View>
+          <Image
+            source={require("@/assets/images/banner2.png")}
+            contentFit="contain"
+            pointerEvents="none"
+            style={styles.banner2}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

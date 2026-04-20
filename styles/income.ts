@@ -279,4 +279,9 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: BCO.muted,
   },
+  banner2: {
+    width: "100%",
+    height: 280,
+    transform: [{ translateY: -100 }],
+  },
 });

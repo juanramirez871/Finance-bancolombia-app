@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 100,
+    paddingBottom: 0,
   },
   totalSection: {
     paddingHorizontal: 20,
@@ -281,7 +281,7 @@ export const styles = StyleSheet.create({
   },
   banner2: {
     width: "100%",
-    height: 280,
-    transform: [{ translateY: -100 }],
+    height: 140,
+    transform: [{ translateY: -50 }],
   },
 });

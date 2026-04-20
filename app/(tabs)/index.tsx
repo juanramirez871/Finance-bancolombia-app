@@ -248,7 +248,6 @@ export default function IncomeScreen() {
         <View>
           <Image
             source={require("@/assets/images/banner2.png")}
-            contentFit="contain"
             pointerEvents="none"
             style={styles.banner2}
           />

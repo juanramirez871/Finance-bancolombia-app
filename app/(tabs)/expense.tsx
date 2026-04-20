@@ -37,7 +37,6 @@ function buildScale(values: number[]) {
 export default function ExpenseScreen() {
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [expensesSelectedIndex, setExpensesSelectedIndex] = useState(3);
-  const [assetsSelectedIndex, setAssetsSelectedIndex] = useState(7);
   const [accountChartsVisible, setAccountChartsVisible] = useState(false);
   const [accountSelectedId, setAccountSelectedId] = useState<string | null>(
     null,
@@ -68,36 +67,12 @@ export default function ExpenseScreen() {
     return buildScale(EXPENSES_CHART_DATA.map((d) => d.value));
   }, []);
 
-  const assetsScale = useMemo(() => {
-    return buildScale(ASSETS_CHART_DATA.map((d) => d.value));
-  }, []);
-
   const expensesSelected =
     EXPENSES_CHART_DATA[expensesSelectedIndex] ?? EXPENSES_CHART_DATA[0];
-  const assetsSelected =
-    ASSETS_CHART_DATA[assetsSelectedIndex] ?? ASSETS_CHART_DATA[0];
 
   const expensesLineData = useMemo(
     () =>
       EXPENSES_CHART_DATA.map((d) => ({
-        value: d.value,
-        label: d.label,
-        dataPointColor: d.frontColor,
-        dataPointRadius: 4,
-        focusedDataPointColor: Colors.yellow,
-        focusedDataPointRadius: 6,
-        focusedDataPointLabelComponent: () => (
-          <View style={styles.pointLabelContainer}>
-            <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
-          </View>
-        ),
-      })),
-    [formatCOP],
-  );
-
-  const assetsLineData = useMemo(
-    () =>
-      ASSETS_CHART_DATA.map((d) => ({
         value: d.value,
         label: d.label,
         dataPointColor: d.frontColor,

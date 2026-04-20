@@ -347,18 +347,18 @@ export const ACCOUNTS: Account[] = [
 ];
 
 export const EXPENSES_CHART_DATA = [
-  { value: 1_150_000, label: "Ene", frontColor: Colors.purple },
-  { value: 980_000, label: "Feb", frontColor: Colors.purple },
-  { value: 1_320_000, label: "Mar", frontColor: Colors.purple },
-  { value: 1_800_000, label: "Abr", frontColor: Colors.yellow },
-  { value: 1_600_000, label: "May", frontColor: Colors.purple },
-  { value: 2_050_000, label: "Jun", frontColor: Colors.purple },
-  { value: 1_900_000, label: "Jul", frontColor: Colors.purple },
-  { value: 2_300_000, label: "Ago", frontColor: Colors.green },
-  { value: 2_100_000, label: "Sep", frontColor: Colors.purple },
-  { value: 2_450_000, label: "Oct", frontColor: Colors.purple },
-  { value: 2_250_000, label: "Nov", frontColor: Colors.purple },
-  { value: 2_800_000, label: "Dic", frontColor: Colors.yellow },
+  { value: 1_150_000, label: "Ene", frontColor: Colors.red },
+  { value: 980_000, label: "Feb", frontColor: Colors.red },
+  { value: 1_320_000, label: "Mar", frontColor: Colors.red },
+  { value: 1_800_000, label: "Abr", frontColor: Colors.red },
+  { value: 1_600_000, label: "May", frontColor: Colors.red },
+  { value: 2_050_000, label: "Jun", frontColor: Colors.red },
+  { value: 1_900_000, label: "Jul", frontColor: Colors.red },
+  { value: 2_300_000, label: "Ago", frontColor: Colors.red },
+  { value: 2_100_000, label: "Sep", frontColor: Colors.red },
+  { value: 2_450_000, label: "Oct", frontColor: Colors.red },
+  { value: 2_250_000, label: "Nov", frontColor: Colors.red },
+  { value: 2_800_000, label: "Dic", frontColor: Colors.red },
 ];
 
 export const ASSETS_CHART_DATA = [

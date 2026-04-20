@@ -5,28 +5,64 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { useMemo, useState } from "react";
 import {
+  type ImageStyle,
   Modal,
   Platform,
   Pressable,
   SectionList,
+  type StyleProp,
   Text,
+  type TextStyle,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Account } from "../../interfaces/income";
-import { styles } from "../../styles/income";
+import { styles as incomeStyles } from "../../styles/income";
 import { TransactionRow } from "./TransactionRow";
+
+type AccountModalStyles = {
+  modalSafe: StyleProp<ViewStyle>;
+  modalHeader: StyleProp<ViewStyle>;
+  modalTitle: StyleProp<TextStyle>;
+  filterRow: StyleProp<ViewStyle>;
+  filterChipsGroup: StyleProp<ViewStyle>;
+  filterChip: StyleProp<ViewStyle>;
+  filterChipEqual: StyleProp<ViewStyle>;
+  filterChipActive: StyleProp<ViewStyle>;
+  filterChipText: StyleProp<TextStyle>;
+  filterChipTextActive: StyleProp<TextStyle>;
+  filterSep: StyleProp<TextStyle>;
+  clearBtn: StyleProp<ViewStyle>;
+  clearBtnHidden: StyleProp<ViewStyle>;
+  clearText: StyleProp<TextStyle>;
+  pickerOverlay: StyleProp<ViewStyle>;
+  pickerSheet: StyleProp<ViewStyle>;
+  pickerSheetHeader: StyleProp<ViewStyle>;
+  pickerSheetCancel: StyleProp<TextStyle>;
+  pickerSheetTitle: StyleProp<TextStyle>;
+  pickerSheetAction: StyleProp<TextStyle>;
+  emptyState: StyleProp<ViewStyle>;
+  emptyText: StyleProp<TextStyle>;
+  modalList: StyleProp<ViewStyle>;
+  dateHeader: StyleProp<TextStyle>;
+  transactionList: StyleProp<ViewStyle>;
+  failedImage: StyleProp<ImageStyle>;
+};
 
 export function AccountFullScreenModal({
   visible,
   account,
   onClose,
+  styles,
 }: {
   visible: boolean;
   account: Account;
   onClose: () => void;
+  styles?: AccountModalStyles & Record<string, unknown>;
 }) {
+  const s = (styles ?? incomeStyles) as AccountModalStyles;
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [picker, setPicker] = useState<"from" | "to" | null>(null);
@@ -106,21 +142,21 @@ export function AccountFullScreenModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.modalSafe}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{account.label}</Text>
+      <SafeAreaView style={s.modalSafe}>
+        <View style={s.modalHeader}>
+          <Text style={s.modalTitle}>{account.label}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={12}>
             <Octicons name="x" size={22} color={Colors.white} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.filterRow}>
-          <View style={styles.filterChipsGroup}>
+        <View style={s.filterRow}>
+          <View style={s.filterChipsGroup}>
             <TouchableOpacity
               style={[
-                styles.filterChip,
-                styles.filterChipEqual,
-                startDate && styles.filterChipActive,
+                s.filterChip,
+                s.filterChipEqual,
+                startDate && s.filterChipActive,
               ]}
               onPress={() => setPicker("from")}
             >
@@ -132,22 +168,19 @@ export function AccountFullScreenModal({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={[
-                  styles.filterChipText,
-                  startDate && styles.filterChipTextActive,
-                ]}
+                style={[s.filterChipText, startDate && s.filterChipTextActive]}
               >
                 {startDate ? fmt(startDate) : "Desde"}
               </Text>
             </TouchableOpacity>
 
-            <Text style={styles.filterSep}>→</Text>
+            <Text style={s.filterSep}>→</Text>
 
             <TouchableOpacity
               style={[
-                styles.filterChip,
-                styles.filterChipEqual,
-                endDate && styles.filterChipActive,
+                s.filterChip,
+                s.filterChipEqual,
+                endDate && s.filterChipActive,
               ]}
               onPress={() => setPicker("to")}
             >
@@ -159,10 +192,7 @@ export function AccountFullScreenModal({
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={[
-                  styles.filterChipText,
-                  endDate && styles.filterChipTextActive,
-                ]}
+                style={[s.filterChipText, endDate && s.filterChipTextActive]}
               >
                 {endDate ? fmt(endDate) : "Hasta"}
               </Text>
@@ -171,10 +201,10 @@ export function AccountFullScreenModal({
 
           <TouchableOpacity
             onPress={clearFilters}
-            style={[styles.clearBtn, !hasFilters && styles.clearBtnHidden]}
+            style={[s.clearBtn, !hasFilters && s.clearBtnHidden]}
             disabled={!hasFilters}
           >
-            <Text style={styles.clearText}>Limpiar</Text>
+            <Text style={s.clearText}>Limpiar</Text>
           </TouchableOpacity>
         </View>
 
@@ -200,26 +230,23 @@ export function AccountFullScreenModal({
             presentationStyle="overFullScreen"
             onRequestClose={() => setPicker(null)}
           >
-            <Pressable
-              style={styles.pickerOverlay}
-              onPress={() => setPicker(null)}
-            >
-              <Pressable style={styles.pickerSheet} onPress={() => {}}>
-                <View style={styles.pickerSheetHeader}>
+            <Pressable style={s.pickerOverlay} onPress={() => setPicker(null)}>
+              <Pressable style={s.pickerSheet} onPress={() => {}}>
+                <View style={s.pickerSheetHeader}>
                   <TouchableOpacity
                     onPress={() => setPicker(null)}
                     hitSlop={12}
                   >
-                    <Text style={styles.pickerSheetCancel}>Cancelar</Text>
+                    <Text style={s.pickerSheetCancel}>Cancelar</Text>
                   </TouchableOpacity>
-                  <Text style={styles.pickerSheetTitle}>
+                  <Text style={s.pickerSheetTitle}>
                     {picker === "from" ? "Desde" : "Hasta"}
                   </Text>
                   <TouchableOpacity
                     onPress={() => setPicker(null)}
                     hitSlop={12}
                   >
-                    <Text style={styles.pickerSheetAction}>Listo</Text>
+                    <Text style={s.pickerSheetAction}>Listo</Text>
                   </TouchableOpacity>
                 </View>
                 <DateTimePicker
@@ -236,29 +263,28 @@ export function AccountFullScreenModal({
         )}
 
         {filteredTx.length === 0 ? (
-          <View style={styles.emptyState}>
+          <View style={s.emptyState}>
             <Image
               source={require("@/assets/images/failed.png")}
-              style={styles.failedImage}
+              style={s.failedImage}
             />
-            <Text style={styles.emptyText}>
-              Sin transacciones en este rango
-            </Text>
+            <Text style={s.emptyText}>Sin transacciones en este rango</Text>
           </View>
         ) : (
           <SectionList
             sections={sections}
             keyExtractor={(tx) => tx.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.modalList}
+            contentContainerStyle={s.modalList}
             renderSectionHeader={({ section }) => (
-              <Text style={styles.dateHeader}>{section.title}</Text>
+              <Text style={s.dateHeader}>{section.title}</Text>
             )}
             renderItem={({ item, index, section }) => (
-              <View style={styles.transactionList}>
+              <View style={s.transactionList}>
                 <TransactionRow
                   tx={item}
                   isLast={index === section.data.length - 1}
+                  styles={styles as any}
                 />
               </View>
             )}

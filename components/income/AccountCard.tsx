@@ -1,28 +1,45 @@
 import { useState } from "react";
+import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import type { Account } from "../../interfaces/income";
-import { styles } from "../../styles/income";
+import { styles as incomeStyles } from "../../styles/income";
 import { AccountFullScreenModal } from "./AccountFullScreenModal";
 import { TransactionRow } from "./TransactionRow";
 
-export function AccountCard({ account }: { account: Account }) {
+type AccountCardStyles = {
+  section: StyleProp<ViewStyle>;
+  sectionHeader: StyleProp<ViewStyle>;
+  sectionTitle: StyleProp<TextStyle>;
+  seeAll: StyleProp<TextStyle>;
+  transactionList: StyleProp<ViewStyle>;
+  transactionScroll: StyleProp<ViewStyle>;
+};
+
+export function AccountCard({
+  account,
+  styles,
+}: {
+  account: Account;
+  styles?: AccountCardStyles & Record<string, unknown>;
+}) {
   const [expanded, setExpanded] = useState(false);
   const preview = account.transactions;
+  const s = (styles ?? incomeStyles) as AccountCardStyles;
 
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{account.label}</Text>
+    <View style={s.section}>
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionTitle}>{account.label}</Text>
         <TouchableOpacity onPress={() => setExpanded(true)}>
-          <Text style={styles.seeAll}>Ver todas</Text>
+          <Text style={s.seeAll}>Ver todas</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.transactionList}>
+      <View style={s.transactionList}>
         <ScrollView
           nestedScrollEnabled
           scrollEnabled={account.transactions.length > 4}
-          style={styles.transactionScroll}
+          style={s.transactionScroll}
           showsVerticalScrollIndicator={false}
         >
           {preview.map((tx, index) => (
@@ -30,6 +47,7 @@ export function AccountCard({ account }: { account: Account }) {
               key={tx.id}
               tx={tx}
               isLast={index === preview.length - 1}
+              styles={styles as any}
             />
           ))}
         </ScrollView>
@@ -39,6 +57,7 @@ export function AccountCard({ account }: { account: Account }) {
         visible={expanded}
         account={account}
         onClose={() => setExpanded(false)}
+        styles={styles as any}
       />
     </View>
   );

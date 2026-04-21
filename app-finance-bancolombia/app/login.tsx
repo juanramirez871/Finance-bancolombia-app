@@ -1,5 +1,6 @@
 import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
+import { api } from "@/utils/api";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
 import * as AuthSession from "expo-auth-session";
@@ -11,16 +12,9 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "./_layout";
 
-type ExpoConfigExtra = {
-  googleClientId?: string;
-  apiBaseUrl?: string;
-};
-
 WebBrowser.maybeCompleteAuthSession();
 
-const extra = (Constants.expoConfig?.extra ?? {}) as ExpoConfigExtra;
-const GOOGLE_CLIENT_ID = extra.googleClientId ?? "";
-const API_BASE_URL = extra.apiBaseUrl ?? "";
+const GOOGLE_CLIENT_ID = Constants.expoConfig?.extra?.googleClientId ?? "";
 const SCOPE = "openid email profile";
 const REDIRECT_URI = AuthSession.makeRedirectUri({
   native: "com.juan098.Finance-bancolombia:/oauth2redirect",
@@ -79,24 +73,16 @@ export default function LoginScreen() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id_token: idToken,
-        }),
+      const data = await api.post<{ token?: string }>("/api/auth/google", {
+        id_token: idToken,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        Alert.alert("Error", data.message || "Authentication failed");
+      if (!data.token) {
+        Alert.alert("Error", "Authentication failed");
         return;
       }
 
-      auth?.signIn(idToken);
+      auth?.signIn(data.token);
       AuthSession.dismiss();
       router.replace("/");
     }

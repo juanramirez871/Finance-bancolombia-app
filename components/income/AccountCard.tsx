@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import type { Account } from "../../interfaces/income";
+import type { Account, Transaction } from "../../interfaces/income";
 import { styles as incomeStyles } from "../../styles/income";
 import { AccountFullScreenModal } from "./AccountFullScreenModal";
 import { TransactionRow } from "./TransactionRow";
@@ -19,10 +19,12 @@ export function AccountCard({
   account,
   styles,
   onPressAccount,
+  getTxAmountColor,
 }: {
   account: Account;
   styles?: AccountCardStyles & Record<string, unknown>;
   onPressAccount?: () => void;
+  getTxAmountColor?: (tx: Transaction) => string | undefined;
 }) {
   const [expanded, setExpanded] = useState(false);
   const preview = account.transactions;
@@ -60,6 +62,7 @@ export function AccountCard({
               tx={tx}
               isLast={index === preview.length - 1}
               styles={styles as any}
+              amountColor={getTxAmountColor?.(tx)}
             />
           ))}
         </ScrollView>
@@ -70,6 +73,7 @@ export function AccountCard({
         account={account}
         onClose={() => setExpanded(false)}
         styles={styles as any}
+        getTxAmountColor={getTxAmountColor}
       />
     </View>
   );

@@ -19,10 +19,12 @@ export function TransactionRow({
   tx,
   isLast,
   styles,
+  amountColor,
 }: {
   tx: Transaction;
   isLast: boolean;
   styles?: TransactionRowStyles;
+  amountColor?: string;
 }) {
   const s = (styles ?? incomeStyles) as unknown as TransactionRowStyles;
   return (
@@ -39,7 +41,11 @@ export function TransactionRow({
       </View>
 
       <View style={s.transactionRight}>
-        <Text style={s.transactionAmount}>{tx.amount}</Text>
+        <Text
+          style={[s.transactionAmount, amountColor ? { color: amountColor } : null]}
+        >
+          {tx.amount}
+        </Text>
       </View>
     </View>
   );

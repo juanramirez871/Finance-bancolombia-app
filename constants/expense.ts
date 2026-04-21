@@ -25,7 +25,7 @@ export const ACCOUNTS: Account[] = [
       },
       {
         id: "t2",
-        label: "Empresa B transfirió",
+        label: "Pago rechazado (Google Play)",
         amount: "$150.000",
         date: "2026-04-19",
         time: "08:14",
@@ -53,7 +53,7 @@ export const ACCOUNTS: Account[] = [
       },
       {
         id: "t6",
-        label: "Empresa F transfirió",
+        label: "Pago fallido (Netflix)",
         amount: "$560.000",
         date: "2026-04-17",
         time: "16:18",
@@ -122,7 +122,7 @@ export const ACCOUNTS: Account[] = [
       },
       {
         id: "t4",
-        label: "Empresa D transfirió",
+        label: "Transacción declinada (Uber)",
         amount: "$210.000",
         date: "2026-04-18",
         time: "12:41",
@@ -150,7 +150,7 @@ export const ACCOUNTS: Account[] = [
       },
       {
         id: "t8",
-        label: "Empresa H transfirió",
+        label: "Error al procesar pago (Amazon)",
         amount: "$710.000",
         date: "2026-04-16",
         time: "20:11",
@@ -198,7 +198,7 @@ export const ACCOUNTS: Account[] = [
       },
       {
         id: "t3",
-        label: "Empresa C transfirió",
+        label: "Pago no procesado (Spotify)",
         amount: "$480.000",
         date: "2026-04-18",
         time: "19:06",

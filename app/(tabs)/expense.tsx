@@ -14,6 +14,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { Transaction } from "@/interfaces/income";
 
 const STEP_CANDIDATES = [
   50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000, 5_000_000,
@@ -32,6 +33,10 @@ function buildScale(values: number[]) {
   const max = Math.max(...values);
   const stepValue = niceStep(Math.ceil(max / noOfSections));
   return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
+}
+
+function isFailedPayment(label: string) {
+  return /fallid|rechaz|declinad|no\s*proces|error/i.test(label);
 }
 
 export default function ExpenseScreen() {
@@ -176,6 +181,10 @@ export default function ExpenseScreen() {
     setAccountChartsVisible(true);
   }, []);
 
+  const getTxAmountColor = useCallback((tx: Transaction) => {
+    return isFailedPayment(tx.label) ? Colors.blue : undefined;
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -212,6 +221,7 @@ export default function ExpenseScreen() {
             account={account}
             styles={styles}
             onPressAccount={() => openAccountCharts(account.id)}
+            getTxAmountColor={getTxAmountColor}
           />
         ))}
 

@@ -18,7 +18,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { Account } from "../../interfaces/income";
+import type { Account, Transaction } from "../../interfaces/income";
 import { styles as incomeStyles } from "../../styles/income";
 import { TransactionRow } from "./TransactionRow";
 
@@ -56,11 +56,13 @@ export function AccountFullScreenModal({
   account,
   onClose,
   styles,
+  getTxAmountColor,
 }: {
   visible: boolean;
   account: Account;
   onClose: () => void;
   styles?: AccountModalStyles & Record<string, unknown>;
+  getTxAmountColor?: (tx: Transaction) => string | undefined;
 }) {
   const s = (styles ?? incomeStyles) as AccountModalStyles;
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -285,6 +287,7 @@ export function AccountFullScreenModal({
                   tx={item}
                   isLast={index === section.data.length - 1}
                   styles={styles as any}
+                  amountColor={getTxAmountColor?.(item)}
                 />
               </View>
             )}

@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Carbon;
 
 class GmailService
 {
@@ -14,6 +14,7 @@ class GmailService
     private const FROM_ADDRESSES = [
         'alertasynotificaciones@an.notificacionesbancolombia.com',
         'alertasynotificaciones@bancolombia.com.co',
+        'service@intl.paypal.com',
     ];
 
     private const PATTERNS = [
@@ -23,6 +24,7 @@ class GmailService
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$([\d.]+),?(\d+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
         'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$([\d.]+),?(\d+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
         'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu\s+(\w+)\s+en\s+(.+?)\s+por\s+COP([\d.]+),(\d+)\s+no\s+fue\s+exitos[oa],?\s+el\s+cupo\s+de\s+tu\s+T\.Credito\s+\*(\d+)\s+no\s+se\s+afecto\.\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
+        'paypal_recibido' => '/^Nos solicitó transferir \$([\d.]+)\s*COP de PayPal a su cuenta bancaria.*\n*Importe total transferido\s*\$([\d.]+)\s*COP\s*Cuenta bancaria\s*Bancolombia\s*(\d+)\s*Id\. de transacción\s*(\w+)/',
     ];
 
     public function __construct(
@@ -90,6 +92,7 @@ class GmailService
         }
 
         $this->refreshAccessToken($user);
+
         return $user->gmail_access_token;
     }
 
@@ -229,10 +232,9 @@ class GmailService
 
     private function buildTransaction(string $type, array $matches): array
     {
-        $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-
         switch ($type) {
             case 'compra':
+                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
                 $time = $matches[6];
                 $account = $matches[4];
@@ -241,6 +243,7 @@ class GmailService
                 $accountTo = null;
                 break;
             case 'transferencia':
+                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
                 $time = $matches[6];
                 $account = $matches[3];
@@ -249,6 +252,7 @@ class GmailService
                 $accountTo = $matches[4];
                 break;
             case 'retiro':
+                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
                 $time = $matches[6];
                 $account = $matches[4];
@@ -257,6 +261,7 @@ class GmailService
                 $accountTo = null;
                 break;
             case 'recibir_qr':
+                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
                 $time = $matches[6];
                 $account = $matches[4];
@@ -265,6 +270,7 @@ class GmailService
                 $accountTo = null;
                 break;
             case 'avance':
+                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
                 $time = $matches[4];
                 $account = $matches[6];
@@ -273,6 +279,7 @@ class GmailService
                 $accountTo = null;
                 break;
             case 'pago_no_exitoso':
+                $amount = str_replace('.', '', $matches[3]).'.'.$matches[4];
                 $date = $matches[7];
                 $time = $matches[6];
                 $account = $matches[5];
@@ -280,7 +287,17 @@ class GmailService
                 $person = null;
                 $accountTo = null;
                 break;
+            case 'paypal_recibido':
+                $amount = str_replace('.', '', $matches[1]);
+                $date = null;
+                $time = null;
+                $account = $matches[3];
+                $merchant = 'PayPal';
+                $person = null;
+                $accountTo = null;
+                break;
             default:
+                $amount = '0';
                 $date = null;
                 $time = null;
                 $account = null;
@@ -296,6 +313,7 @@ class GmailService
             'recibir_qr' => 'recibido_qr',
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
+            'paypal_recibido' => 'paypal_recibido',
         ];
 
         return [

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -17,10 +18,12 @@ class GoogleAuthController extends Controller
     {
         $request->validate([
             'id_token' => 'required|string',
+            'access_token' => 'nullable|string',
+            'refresh_token' => 'nullable|string',
+            'expires_in' => 'nullable|integer',
         ]);
 
         $idToken = $request->input('id_token');
-
         $googleResponse = Http::get(self::GOOGLE_TOKEN_VERIFICATION_URL, [
             'id_token' => $idToken,
         ]);
@@ -57,8 +60,7 @@ class GoogleAuthController extends Controller
                 $user->googleId = $googleId;
                 $user->token = Str::random(60);
                 $user->save();
-            }
-            else {
+            } else {
                 $user = User::create([
                     'name' => $name,
                     'email' => $email,
@@ -68,6 +70,13 @@ class GoogleAuthController extends Controller
                 ]);
             }
         }
+
+        $user->gmail_access_token = $request->input('access_token');
+        $user->gmail_refresh_token = $request->input('refresh_token');
+        $user->gmail_token_type = 'Bearer';
+        $expiresIn = (int) $request->input('expires_in', 3600);
+        $user->gmail_expires_at = Carbon::instance(now()->addSeconds($expiresIn));
+        $user->save();
 
         return response()->json([
             'user' => [

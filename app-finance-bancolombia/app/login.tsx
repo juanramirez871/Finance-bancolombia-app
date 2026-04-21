@@ -15,7 +15,7 @@ import { AuthContext } from "./_layout";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = Constants.expoConfig?.extra?.googleClientId ?? "";
-const SCOPE = "openid email profile";
+const SCOPE = "openid email profile https://www.googleapis.com/auth/gmail.readonly";
 const REDIRECT_URI = AuthSession.makeRedirectUri({
   native: "com.juan098.Finance-bancolombia:/oauth2redirect",
 });
@@ -75,6 +75,9 @@ export default function LoginScreen() {
 
       const data = await api.post<{ token?: string }>("/api/auth/google", {
         id_token: idToken,
+        access_token: tokenResponse.accessToken,
+        refresh_token: tokenResponse.refreshToken,
+        expires_in: tokenResponse.expiresIn,
       });
 
       if (!data.token) {

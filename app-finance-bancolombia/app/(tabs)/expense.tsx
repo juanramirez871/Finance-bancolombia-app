@@ -10,10 +10,11 @@ import { styles } from "@/styles/expense";
 import Octicons from "@expo/vector-icons/Octicons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { useCallback, useMemo, useState } from "react";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useContext, useMemo, useState } from "react";
+import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AuthContext } from "../_layout";
 import type { Transaction } from "@/interfaces/income";
 
 const STEP_CANDIDATES = [
@@ -40,7 +41,23 @@ function isFailedPayment(label: string) {
 }
 
 export default function ExpenseScreen() {
+  const auth = useContext(AuthContext);
   const [balanceVisible, setBalanceVisible] = useState(true);
+
+  const handleSignOut = useCallback(() => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Estás seguro de que quieres cerrar sesión?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cerrar sesión",
+          style: "destructive",
+          onPress: () => auth?.signOut(),
+        },
+      ],
+    );
+  }, [auth]);
   const [expensesSelectedIndex, setExpensesSelectedIndex] = useState(3);
   const [accountChartsVisible, setAccountChartsVisible] = useState(false);
   const [accountSelectedId, setAccountSelectedId] = useState<string | null>(
@@ -204,13 +221,18 @@ export default function ExpenseScreen() {
               <Text style={styles.totalAmount}>
                 {balanceVisible ? "$2'441.000" : "••••••••"}
               </Text>
-              <TouchableOpacity onPress={() => setBalanceVisible((v) => !v)}>
-                <Octicons
-                  name={balanceVisible ? "eye" : "eye-closed"}
-                  size={22}
-                  color={BCO.muted}
-                />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <TouchableOpacity onPress={handleSignOut}>
+                  <Octicons name="sign-out" size={22} color={BCO.muted} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setBalanceVisible((v) => !v)}>
+                  <Octicons
+                    name={balanceVisible ? "eye" : "eye-closed"}
+                    size={22}
+                    color={BCO.muted}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>

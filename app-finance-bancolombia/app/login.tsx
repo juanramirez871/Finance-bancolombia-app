@@ -2,17 +2,113 @@ import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
-import { useCallback, useContext } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
+import { useRouter } from "expo-router";
+import { useCallback, useContext, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "./_layout";
 
+type ExpoConfigExtra = {
+  googleClientId?: string;
+  apiBaseUrl?: string;
+};
+
+WebBrowser.maybeCompleteAuthSession();
+
+const extra = (Constants.expoConfig?.extra ?? {}) as ExpoConfigExtra;
+const GOOGLE_CLIENT_ID = extra.googleClientId ?? "";
+const API_BASE_URL = extra.apiBaseUrl ?? "";
+const SCOPE = "openid email profile";
+const REDIRECT_URI = AuthSession.makeRedirectUri({
+  native: "com.juan098.Finance-bancolombia:/oauth2redirect",
+});
+
+const discovery = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+};
+
 export default function LoginScreen() {
   const auth = useContext(AuthContext);
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  const onGoogleSignIn = useCallback(() => {
-    auth?.signIn();
-  }, [auth]);
+  const handleGoogleSignIn = useCallback(async () => {
+    setLoading(true);
+    try {
+      const request = new AuthSession.AuthRequest({
+        clientId: GOOGLE_CLIENT_ID,
+        scopes: SCOPE.split(" "),
+        redirectUri: REDIRECT_URI,
+        usePKCE: true,
+        responseType: AuthSession.ResponseType.Code,
+      });
+
+      const result = await request.promptAsync(discovery);
+      if (result.type !== "success") {
+        return;
+      }
+
+      if (!("params" in result)) {
+        Alert.alert("Error", "No se pudo completar el login.");
+        return;
+      }
+
+      const code = result.params?.code;
+      if (!code) {
+        Alert.alert("Error", "No se recibió el código de autenticación.");
+        return;
+      }
+
+      const tokenResponse = await AuthSession.exchangeCodeAsync(
+        {
+          clientId: GOOGLE_CLIENT_ID,
+          code,
+          redirectUri: REDIRECT_URI,
+          extraParams: { code_verifier: request.codeVerifier ?? "" },
+        },
+        discovery,
+      );
+
+      const idToken = tokenResponse.idToken;
+      if (!idToken) {
+        Alert.alert("Error", "No se recibió el id_token.");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_token: idToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert("Error", data.message || "Authentication failed");
+        return;
+      }
+
+      auth?.signIn(idToken);
+      AuthSession.dismiss();
+      router.replace("/");
+    }
+    catch (error) {
+      console.log("Caught error:", error);
+      console.error("Google sign in error:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+    finally {
+      setLoading(false);
+    }
+  }, [auth, router]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -29,7 +125,11 @@ export default function LoginScreen() {
           Accede solo con tu cuenta de Google para ver tus finanzas
         </Text>
 
-        <TouchableOpacity onPress={onGoogleSignIn} style={styles.googleButton}>
+        <TouchableOpacity
+          onPress={handleGoogleSignIn}
+          style={styles.googleButton}
+          disabled={loading}
+        >
           <View style={styles.googleIconWrap}>
             <AntDesign name="google" size={18} color={Colors.white} />
           </View>

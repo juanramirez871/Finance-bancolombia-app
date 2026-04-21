@@ -10,15 +10,32 @@ import { styles } from "@/styles/income";
 import Octicons from "@expo/vector-icons/Octicons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { useCallback, useMemo, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useContext, useMemo, useState } from "react";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AuthContext } from "../_layout";
 
 export default function IncomeScreen() {
+  const auth = useContext(AuthContext);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [incomeSelectedIndex, setIncomeSelectedIndex] = useState(3);
   const [assetsSelectedIndex, setAssetsSelectedIndex] = useState(7);
+
+  const handleSignOut = useCallback(() => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Estás seguro de que quieres cerrar sesión?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cerrar sesión",
+          style: "destructive",
+          onPress: () => auth?.signOut(),
+        },
+      ],
+    );
+  }, [auth]);
 
   const formatCOP = useCallback(
     (value: number) =>
@@ -122,13 +139,18 @@ export default function IncomeScreen() {
               <Text style={styles.totalAmount}>
                 {balanceVisible ? "$2'441.000" : "••••••••"}
               </Text>
-              <TouchableOpacity onPress={() => setBalanceVisible((v) => !v)}>
-                <Octicons
-                  name={balanceVisible ? "eye" : "eye-closed"}
-                  size={22}
-                  color={BCO.muted}
-                />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <TouchableOpacity onPress={handleSignOut}>
+                  <Octicons name="sign-out" size={22} color={BCO.muted} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setBalanceVisible((v) => !v)}>
+                  <Octicons
+                    name={balanceVisible ? "eye" : "eye-closed"}
+                    size={22}
+                    color={BCO.muted}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>

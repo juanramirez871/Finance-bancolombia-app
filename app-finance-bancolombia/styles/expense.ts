@@ -39,6 +39,7 @@ export const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: "700",
     color: BCO.text,
+    minWidth: 200,
   },
   section: {
     marginHorizontal: 20,

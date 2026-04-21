@@ -15,10 +15,11 @@ import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
+import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 
 export default function IncomeScreen() {
   const auth = useContext(AuthContext);
-  const [balanceVisible, setBalanceVisible] = useState(true);
+  const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
   const [incomeSelectedIndex, setIncomeSelectedIndex] = useState(3);
   const [assetsSelectedIndex, setAssetsSelectedIndex] = useState(7);
 
@@ -143,7 +144,7 @@ export default function IncomeScreen() {
                 <TouchableOpacity onPress={handleSignOut}>
                   <Octicons name="sign-out" size={22} color={BCO.muted} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setBalanceVisible((v) => !v)}>
+                <TouchableOpacity onPress={() => setBalanceVisible(!balanceVisible)}>
                   <Octicons
                     name={balanceVisible ? "eye" : "eye-closed"}
                     size={22}

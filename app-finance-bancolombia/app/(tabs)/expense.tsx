@@ -15,6 +15,7 @@ import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-na
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
+import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 import type { Transaction } from "@/interfaces/income";
 
 const STEP_CANDIDATES = [
@@ -42,7 +43,7 @@ function isFailedPayment(label: string) {
 
 export default function ExpenseScreen() {
   const auth = useContext(AuthContext);
-  const [balanceVisible, setBalanceVisible] = useState(true);
+  const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -225,7 +226,7 @@ export default function ExpenseScreen() {
                 <TouchableOpacity onPress={handleSignOut}>
                   <Octicons name="sign-out" size={22} color={BCO.muted} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setBalanceVisible((v) => !v)}>
+                <TouchableOpacity onPress={() => setBalanceVisible(!balanceVisible)}>
                   <Octicons
                     name={balanceVisible ? "eye" : "eye-closed"}
                     size={22}

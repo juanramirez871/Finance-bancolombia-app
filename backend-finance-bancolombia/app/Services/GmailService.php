@@ -125,7 +125,9 @@ class GmailService
         }
 
         $messages = $response->json();
-        if (empty($messages['messages'])) return [];
+        if (empty($messages['messages'])) {
+            return [];
+        }
 
         $emails = [];
         foreach ($messages['messages'] as $msg) {
@@ -247,7 +249,9 @@ class GmailService
     private function base64UrlDecode(string $data): string
     {
         $remainder = strlen($data) % 4;
-        if ($remainder) $data .= str_repeat('=', 4 - $remainder);
+        if ($remainder) {
+            $data .= str_repeat('=', 4 - $remainder);
+        }
 
         return base64_decode(strtr($data, '-_', '+/'));
     }
@@ -255,7 +259,9 @@ class GmailService
     private function parseTransaction(string $text, string $snippet = '', ?string $emailDate = null): ?array
     {
         $textToParse = $text ?: $snippet;
-        if (! $textToParse) return null;
+        if (! $textToParse) {
+            return null;
+        }
 
         foreach (self::PATTERNS as $type => $pattern) {
             if (preg_match($pattern, $textToParse, $matches)) {
@@ -340,8 +346,8 @@ class GmailService
 
             case 'paypal_recibido':
                 $amount = str_replace('.', '', $matches[1]);
-                $date = $parsedEmailDate;
-                $time = null;
+                $date = $parsedEmailDate['date'];
+                $time = $parsedEmailDate['time'];
                 $account = $matches[3] ?? null;
                 $merchant = 'PayPal';
                 $person = null;
@@ -350,8 +356,8 @@ class GmailService
 
             case 'paypal_recibido_snippet':
                 $amount = str_replace('.', '', $matches[1]);
-                $date = $parsedEmailDate;
-                $time = null;
+                $date = $parsedEmailDate['date'];
+                $time = $parsedEmailDate['time'];
                 $account = null;
                 $merchant = 'PayPal';
                 $person = null;
@@ -391,14 +397,17 @@ class GmailService
         ];
     }
 
-    private function parseEmailDate(string $emailDate): ?string
+    private function parseEmailDate(string $emailDate): array
     {
         try {
             $date = Carbon::parse($emailDate);
-            return $date->format('d/m/Y');
-        }
-        catch (\Throwable $e) {
-            return null;
+
+            return [
+                'date' => $date->format('d/m/Y'),
+                'time' => $date->format('H:i'),
+            ];
+        } catch (\Throwable $e) {
+            return ['date' => null, 'time' => null];
         }
     }
 }

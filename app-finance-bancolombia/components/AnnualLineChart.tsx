@@ -184,8 +184,14 @@ export function AnnualLineChart({
                   alignItems: "center",
                 }}
               >
-                <Text numberOfLines={1} ellipsizeMode="tail" style={styles.xAxisLabel}>
-                  {formatAxisLabel(point.label)}
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={styles.xAxisLabel}
+                >
+                  {selectedPoint?.label === point.label
+                    ? point.label
+                    : formatAxisLabel(point.label)}
                 </Text>
               </View>
             ))}
@@ -200,7 +206,7 @@ export function AnnualLineChart({
                   },
                 ]}
               >
-                <Text numberOfLines={1} ellipsizeMode="tail" style={styles.tooltipTitle}>
+                <Text style={styles.tooltipTitle}>
                   {selectedPoint.label}
                 </Text>
                 <Text style={styles.tooltipValue}>
@@ -232,6 +238,7 @@ const styles = {
     fontSize: 12,
     fontWeight: "600" as const,
     color: Colors.white,
+    flexShrink: 1,
   },
   tooltipValue: {
     fontSize: 13,

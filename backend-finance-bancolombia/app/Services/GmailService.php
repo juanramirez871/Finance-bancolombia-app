@@ -18,14 +18,14 @@ class GmailService
     ];
 
     private const PATTERNS = [
-        'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.]+),(\d+)\s+en\s+(.+?)\s+con tu\s+T\.Cred\s+\*(\d+),?\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
-        'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \$([\d.]+),?(\d+)\s+desde tu cuenta (\d+)\s+a la cuenta \*(.+?)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
-        'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$([\d.]+),?(\d+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
-        'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$([\d.]+),?(\d+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
-        'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$([\d.]+),?(\d+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
-        'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu\s+(\w+)\s+en\s+(.+?)\s+por\s+COP([\d.]+),(\d+)\s+no\s+fue\s+exitos[oa],?\s+el\s+cupo\s+de\s+tu\s+T\.Credito\s+\*(\d+)\s+no\s+se\s+afecto\.\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
-        'paypal_recibido' => '/^Nos solicitó transferir \$ ?([\d.]+)\s*COP de PayPal a su cuenta bancaria.*Importe total transferido\s*\$ ?([\d.]+)\s*COP\s*Cuenta bancaria\s*Bancolombia\s*(\d+)\s*Id\. de transacción\s*(\w+)/',
-        'paypal_recibido_snippet' => '/transferir \$ ?([\d.]+)\s*COP de PayPal/',
+        'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.]+),(\d+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
+        'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.]+),?(\d+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
+        'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.]+),?(\d+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
+        'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.]+),?(\d+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
+        'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.]+),?(\d+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
+        'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu \w+ en ([^,]+) por COP([\d.]+),?(\d+) no fue exitosa? el cupo de tu T\.Credito \*(\d+) no se afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
+        'paypal_recibido' => '/^Nos solicitó transferir\s*\$ ?([\d.]+)\s*COP de PayPal a su cuenta bancaria.*Importe total transferido\s*\$ ?([\d.]+)\s*COP\s*Cuenta bancaria\s*Bancolombia\s*(\d+)\s*Id\. de transacción\s*(\w+)/',
+        'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d.]+)\s*COP de PayPal/',
     ];
 
     public function __construct(
@@ -283,15 +283,25 @@ class GmailService
     private function buildTransaction(string $type, array $matches, ?string $emailDate = null): array
     {
         $parsedEmailDate = $emailDate ? $this->parseEmailDate($emailDate) : null;
+        $debitCredit = 'debito';
+        $account = null;
+        $accountTo = null;
+        $merchant = null;
+        $person = null;
+        $date = null;
+        $time = null;
+        $amount = '0';
+
         switch ($type) {
             case 'compra':
                 $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-                $date = $matches[5];
-                $time = $matches[6];
-                $account = $matches[4];
+                $date = $matches[6];
+                $time = $matches[7];
+                $account = $matches[5];
                 $merchant = trim($matches[3]);
                 $person = null;
                 $accountTo = null;
+                $debitCredit = $matches[4] === 'T.Cred' ? 'credito' : 'debito';
                 break;
 
             case 'transferencia':
@@ -302,6 +312,7 @@ class GmailService
                 $merchant = null;
                 $person = null;
                 $accountTo = $matches[4];
+                $debitCredit = 'debito';
                 break;
 
             case 'retiro':
@@ -312,6 +323,7 @@ class GmailService
                 $merchant = trim($matches[3]);
                 $person = null;
                 $accountTo = null;
+                $debitCredit = 'debito';
                 break;
 
             case 'recibir_qr':
@@ -322,6 +334,7 @@ class GmailService
                 $merchant = null;
                 $person = trim($matches[3]);
                 $accountTo = null;
+                $debitCredit = 'credito';
                 break;
 
             case 'avance':
@@ -332,26 +345,29 @@ class GmailService
                 $merchant = trim($matches[3]);
                 $person = null;
                 $accountTo = null;
+                $debitCredit = 'credito';
                 break;
 
             case 'pago_no_exitoso':
-                $amount = str_replace('.', '', $matches[3]).'.'.$matches[4];
+                $amount = str_replace('.', '', $matches[2]).'.'.$matches[3];
                 $date = $matches[7];
                 $time = $matches[6];
                 $account = $matches[5];
-                $merchant = trim($matches[2]);
+                $merchant = trim($matches[1]);
                 $person = null;
                 $accountTo = null;
+                $debitCredit = 'credito';
                 break;
 
             case 'paypal_recibido':
                 $amount = str_replace('.', '', $matches[1]);
                 $date = $parsedEmailDate['date'];
                 $time = $parsedEmailDate['time'];
-                $account = $matches[3] ?? null;
+                $account = null;
                 $merchant = 'PayPal';
                 $person = null;
-                $accountTo = null;
+                $accountTo = 'Bancolombia '.$matches[3];
+                $debitCredit = 'credito';
                 break;
 
             case 'paypal_recibido_snippet':
@@ -362,6 +378,7 @@ class GmailService
                 $merchant = 'PayPal';
                 $person = null;
                 $accountTo = null;
+                $debitCredit = 'credito';
                 break;
 
             default:
@@ -372,6 +389,7 @@ class GmailService
                 $merchant = null;
                 $person = null;
                 $accountTo = null;
+                $debitCredit = 'debito';
         }
 
         $typeMap = [
@@ -394,6 +412,7 @@ class GmailService
             'person' => $person,
             'date' => $date,
             'time' => $time,
+            'debit_credit' => $debitCredit ?? 'debito',
         ];
     }
 

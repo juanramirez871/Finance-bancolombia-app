@@ -17,6 +17,7 @@ class Transaction extends Model
         'person',
         'date',
         'time',
+        'debit_credit',
     ];
 
     protected $casts = [

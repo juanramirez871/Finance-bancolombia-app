@@ -7,11 +7,12 @@ import {
 } from "@/constants/expense";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/expense";
+import { useTransactions } from "@/hooks/useTransactions";
 import Octicons from "@expo/vector-icons/Octicons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
@@ -44,6 +45,7 @@ function isFailedPayment(label: string) {
 export default function ExpenseScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
+  const { expenseAccounts, loading } = useTransactions();
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -238,15 +240,19 @@ export default function ExpenseScreen() {
           </View>
         </View>
 
-        {ACCOUNTS.map((account) => (
-          <AccountCard
-            key={account.id}
-            account={account}
-            styles={styles}
-            onPressAccount={() => openAccountCharts(account.id)}
-            getTxAmountColor={getTxAmountColor}
-          />
-        ))}
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.red} />
+        ) : (
+          expenseAccounts.map((account) => (
+            <AccountCard
+              key={account.id}
+              account={account}
+              styles={styles}
+              onPressAccount={() => openAccountCharts(account.id)}
+              getTxAmountColor={getTxAmountColor}
+            />
+          ))
+        )}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>

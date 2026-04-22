@@ -25,9 +25,9 @@ class EmailController extends Controller
             }
 
             $emails = $this->gmail->listEmails($user, $year);
-
             return response()->json(['emails' => $emails]);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -61,6 +61,7 @@ class EmailController extends Controller
 
                 if ($exists) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -74,6 +75,7 @@ class EmailController extends Controller
                     'person' => $transaction['person'],
                     'date' => $transaction['date'],
                     'time' => $transaction['time'],
+                    'debit_credit' => $transaction['debit_credit'] ?? 'debito',
                 ]);
                 $saved++;
             }

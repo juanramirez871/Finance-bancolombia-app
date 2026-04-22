@@ -7,11 +7,13 @@ import {
 } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/income";
+import { api, type Transaction } from "@/utils/api";
+import { useTransactions } from "@/hooks/useTransactions";
 import Octicons from "@expo/vector-icons/Octicons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
@@ -20,6 +22,11 @@ import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 export default function IncomeScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
+  const {
+    incomeAccounts,
+    loading,
+    importing,
+  } = useTransactions();
   const [incomeSelectedIndex, setIncomeSelectedIndex] = useState(3);
   const [assetsSelectedIndex, setAssetsSelectedIndex] = useState(7);
 
@@ -156,9 +163,13 @@ export default function IncomeScreen() {
           </View>
         </View>
 
-        {ACCOUNTS.map((account) => (
-          <AccountCard key={account.id} account={account} />
-        ))}
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.purple} />
+        ) : (
+          incomeAccounts.map((account) => (
+            <AccountCard key={account.id} account={account} />
+          ))
+        )}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>

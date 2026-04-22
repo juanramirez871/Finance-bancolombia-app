@@ -24,7 +24,8 @@ class GmailService
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$([\d.]+),?(\d+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
         'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$([\d.]+),?(\d+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
         'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu\s+(\w+)\s+en\s+(.+?)\s+por\s+COP([\d.]+),(\d+)\s+no\s+fue\s+exitos[oa],?\s+el\s+cupo\s+de\s+tu\s+T\.Credito\s+\*(\d+)\s+no\s+se\s+afecto\.\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
-        'paypal_recibido' => '/^Nos solicitó transferir \$([\d.]+)\s*COP de PayPal a su cuenta bancaria.*\n*Importe total transferido\s*\$([\d.]+)\s*COP\s*Cuenta bancaria\s*Bancolombia\s*(\d+)\s*Id\. de transacción\s*(\w+)/',
+        'paypal_recibido' => '/^Nos solicitó transferir \$ ?([\d.]+)\s*COP de PayPal a su cuenta bancaria.*Importe total transferido\s*\$ ?([\d.]+)\s*COP\s*Cuenta bancaria\s*Bancolombia\s*(\d+)\s*Id\. de transacción\s*(\w+)/',
+        'paypal_recibido_snippet' => '/transferir \$ ?([\d.]+)\s*COP de PayPal/',
     ];
 
     public function __construct(
@@ -124,64 +125,25 @@ class GmailService
         }
 
         $messages = $response->json();
-
-        if (empty($messages['messages'])) {
-            return [];
-        }
+        if (empty($messages['messages'])) return [];
 
         $emails = [];
         foreach ($messages['messages'] as $msg) {
-            $email = $this->getEmailDetails($token, $msg['id']);
+            $email = $this->getEmailDetails($token, $msg['id'], $msg['threadId'] ?? null);
             if ($email['transaction'] !== null) {
                 $emails[] = $email;
             }
         }
 
-        return $emails;
-    }
-
-    public function listEmailsRaw(User $user, int $year): array
-    {
-        $token = $this->getValidAccessToken($user);
-        $startDate = "{$year}/01/01";
-        $endDate = "{$year}/12/31";
-
-        $fromQueries = collect(self::FROM_ADDRESSES)->map(
-            fn ($addr) => "from:{$addr}"
-        )->implode(' OR ');
-
-        $query = http_build_query([
-            'q' => "({$fromQueries}) after:{$startDate} before:{$endDate}",
-            'maxResults' => 100,
-            'sort' => 'newer',
+        Log::debug('GmailService listEmails result', [
+            'emails_count' => count($emails),
+            'transactions' => collect($emails)->pluck('transaction.type')->toArray(),
         ]);
 
-        $response = Http::withToken($token)
-            ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages?{$query}");
-
-        if (! $response->successful()) {
-            Log::error('Gmail list emails failed', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-            throw new \RuntimeException('Failed to list emails');
-        }
-
-        $messages = $response->json();
-
-        if (empty($messages['messages'])) {
-            return [];
-        }
-
-        $emails = [];
-        foreach ($messages['messages'] as $msg) {
-            $emails[] = $this->getEmailDetails($token, $msg['id']);
-        }
-
         return $emails;
     }
 
-    private function getEmailDetails(string $token, string $messageId): array
+    private function getEmailDetails(string $token, string $messageId, ?string $threadId = null): array
     {
         $response = Http::withToken($token)
             ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$messageId}", [
@@ -205,33 +167,116 @@ class GmailService
         $payload = $data['payload'] ?? [];
         $headers = collect($payload['headers'] ?? [])->keyBy('name');
 
+        $from = optional($headers->get('From'))['value'] ?? '';
         $snippet = $data['snippet'] ?? '';
-        $transaction = $this->parseTransaction($snippet);
+        $emailDate = optional($headers->get('Date'))['value'] ?? null;
+        $body = $this->getEmailBody($token, $messageId, $from);
+        $textToParse = $body ?: '';
+        $transaction = $this->parseTransaction($textToParse, $snippet, $emailDate);
 
         return [
             'id' => $data['id'],
             'threadId' => $data['threadId'] ?? null,
             'subject' => optional($headers->get('Subject'))['value'] ?? null,
-            'from' => optional($headers->get('From'))['value'] ?? null,
+            'from' => $from,
             'date' => optional($headers->get('Date'))['value'] ?? null,
             'snippet' => $snippet,
             'transaction' => $transaction,
         ];
     }
 
-    private function parseTransaction(string $snippet): ?array
+    private function getEmailBody(string $token, string $messageId, string $from): ?string
     {
-        foreach (self::PATTERNS as $type => $pattern) {
-            if (preg_match($pattern, $snippet, $matches)) {
-                return $this->buildTransaction($type, $matches);
+        if ($from && str_contains(strtolower($from), 'paypal.com')) {
+            $response = Http::withToken($token)
+                ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$messageId}", [
+                    'format' => 'full',
+                ]);
+
+            if (! $response->successful()) {
+                Log::debug('GmailService getEmailBody failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return null;
+            }
+
+            $data = $response->json();
+            $payload = $data['payload'] ?? [];
+            $body = $payload['body'] ?? [];
+            $dataValue = $body['data'] ?? null;
+
+            if ($dataValue) {
+                $decoded = quoted_printable_decode($this->base64UrlDecode($dataValue));
+                $clean = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $decoded));
+                $clean = html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+                return $clean;
+            }
+
+            $parts = $payload['parts'] ?? [];
+            foreach ($parts as $part) {
+                $mimeType = $part['mimeType'] ?? '';
+                if ($mimeType === 'text/plain') {
+                    $partBody = $part['body'] ?? [];
+                    $partData = $partBody['data'] ?? null;
+                    if ($partData) {
+                        return quoted_printable_decode($this->base64UrlDecode($partData));
+                    }
+                }
+
+                if ($mimeType === 'text/html') {
+                    $partBody = $part['body'] ?? [];
+                    $partData = $partBody['data'] ?? null;
+                    if ($partData) {
+                        $html = quoted_printable_decode($this->base64UrlDecode($partData));
+                        $text = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $html));
+                        $text = preg_replace('/\s+/', ' ', $text);
+                        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+                        return $text;
+                    }
+                }
             }
         }
 
         return null;
     }
 
-    private function buildTransaction(string $type, array $matches): array
+    private function base64UrlDecode(string $data): string
     {
+        $remainder = strlen($data) % 4;
+        if ($remainder) $data .= str_repeat('=', 4 - $remainder);
+
+        return base64_decode(strtr($data, '-_', '+/'));
+    }
+
+    private function parseTransaction(string $text, string $snippet = '', ?string $emailDate = null): ?array
+    {
+        $textToParse = $text ?: $snippet;
+        if (! $textToParse) return null;
+
+        foreach (self::PATTERNS as $type => $pattern) {
+            if (preg_match($pattern, $textToParse, $matches)) {
+                return $this->buildTransaction($type, $matches, $emailDate);
+            }
+        }
+
+        if ($snippet && $text !== $snippet) {
+            foreach (self::PATTERNS as $type => $pattern) {
+                if (preg_match($pattern, $snippet, $matches)) {
+                    return $this->buildTransaction($type, $matches, $emailDate);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function buildTransaction(string $type, array $matches, ?string $emailDate = null): array
+    {
+        $parsedEmailDate = $emailDate ? $this->parseEmailDate($emailDate) : null;
         switch ($type) {
             case 'compra':
                 $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
@@ -242,6 +287,7 @@ class GmailService
                 $person = null;
                 $accountTo = null;
                 break;
+
             case 'transferencia':
                 $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
@@ -251,6 +297,7 @@ class GmailService
                 $person = null;
                 $accountTo = $matches[4];
                 break;
+
             case 'retiro':
                 $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
@@ -260,6 +307,7 @@ class GmailService
                 $person = null;
                 $accountTo = null;
                 break;
+
             case 'recibir_qr':
                 $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
@@ -269,6 +317,7 @@ class GmailService
                 $person = trim($matches[3]);
                 $accountTo = null;
                 break;
+
             case 'avance':
                 $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
                 $date = $matches[5];
@@ -278,6 +327,7 @@ class GmailService
                 $person = null;
                 $accountTo = null;
                 break;
+
             case 'pago_no_exitoso':
                 $amount = str_replace('.', '', $matches[3]).'.'.$matches[4];
                 $date = $matches[7];
@@ -287,15 +337,27 @@ class GmailService
                 $person = null;
                 $accountTo = null;
                 break;
+
             case 'paypal_recibido':
                 $amount = str_replace('.', '', $matches[1]);
-                $date = null;
+                $date = $parsedEmailDate;
                 $time = null;
-                $account = $matches[3];
+                $account = $matches[3] ?? null;
                 $merchant = 'PayPal';
                 $person = null;
                 $accountTo = null;
                 break;
+
+            case 'paypal_recibido_snippet':
+                $amount = str_replace('.', '', $matches[1]);
+                $date = $parsedEmailDate;
+                $time = null;
+                $account = null;
+                $merchant = 'PayPal';
+                $person = null;
+                $accountTo = null;
+                break;
+
             default:
                 $amount = '0';
                 $date = null;
@@ -314,6 +376,7 @@ class GmailService
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
             'paypal_recibido' => 'paypal_recibido',
+            'paypal_recibido_snippet' => 'paypal_recibido',
         ];
 
         return [
@@ -326,5 +389,16 @@ class GmailService
             'date' => $date,
             'time' => $time,
         ];
+    }
+
+    private function parseEmailDate(string $emailDate): ?string
+    {
+        try {
+            $date = Carbon::parse($emailDate);
+            return $date->format('d/m/Y');
+        }
+        catch (\Throwable $e) {
+            return null;
+        }
     }
 }

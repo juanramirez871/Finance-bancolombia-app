@@ -9,6 +9,7 @@ Route::post('/auth/google', [GoogleAuthController::class, 'authenticate']);
 
 Route::middleware('token')->group(function () {
     Route::get('/email', [EmailController::class, 'index']);
+    Route::post('/email/import', [EmailController::class, 'import']);
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::post('/transactions', [TransactionController::class, 'store']);
     Route::get('/transactions/{transaction}', [TransactionController::class, 'show']);

@@ -221,6 +221,7 @@ export function AccountFullScreenModal({
             }}
             maximumDate={maximumDate}
             minimumDate={minimumDate}
+            themeVariant="dark"
           />
         )}
 
@@ -258,6 +259,7 @@ export function AccountFullScreenModal({
                   onChange={(_, selected) => handleSelectDate(selected ?? null)}
                   maximumDate={maximumDate}
                   minimumDate={minimumDate}
+                  themeVariant="dark"
                 />
               </Pressable>
             </Pressable>

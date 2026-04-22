@@ -3,16 +3,21 @@ import { Redirect, Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
+import * as SystemUI from "expo-system-ui";
 import "react-native-reanimated";
 import { Colors } from "@/constants/theme";
 
 const BancolombiaTheme = {
   ...DefaultTheme,
+  dark: true,
   colors: {
     ...DefaultTheme.colors,
     primary: Colors.purple,
-    background: Colors.white,
-    text: Colors.black,
+    background: Colors.black,
+    card: Colors.black,
+    text: Colors.white,
+    border: Colors.black,
+    notification: Colors.yellow,
   },
 };
 
@@ -89,7 +94,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
         </Stack>
       </AuthContext.Provider>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
     </ThemeProvider>
   );
 }

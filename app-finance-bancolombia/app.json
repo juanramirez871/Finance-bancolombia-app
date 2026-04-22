@@ -9,13 +9,14 @@
       "financebancolombia",
       "com.googleusercontent.apps.233110526860-h6dgcett1pm6apgishnp1oqbt506brn0"
     ],
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.juan098.Finance-bancolombia"
     },
     "android": {
+      "userInterfaceStyle": "dark",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -31,6 +32,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-system-ui",
+        {
+          "userInterfaceStyle": "dark"
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",

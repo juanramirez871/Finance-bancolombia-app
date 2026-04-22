@@ -1,4 +1,5 @@
 import { AccountCard } from "@/components/income/AccountCard";
+import { AccountSkeleton } from "@/components/income/AccountSkeleton";
 import {
   ACCOUNTS,
   ASSETS_CHART_DATA,
@@ -12,11 +13,12 @@ import Octicons from "@expo/vector-icons/Octicons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
 import { useBalanceVisible } from "@/hooks/useBalanceVisible";
+import { SkeletonLine } from "@/components/SkeletonLine";
 import type { Transaction } from "@/interfaces/income";
 
 const STEP_CANDIDATES = [
@@ -46,6 +48,16 @@ export default function ExpenseScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
   const { expenseAccounts, loading } = useTransactions();
+
+  const totalExpense = useMemo(() => {
+    return expenseAccounts.reduce((sum, account) => {
+      return sum + account.transactions.reduce((txSum, tx) => {
+        const clean = tx.amount.replace(/[^0-9]/g, "");
+        const numeric = parseInt(clean, 10);
+        return txSum + (isNaN(numeric) ? 0 : numeric);
+      }, 0);
+    }, 0);
+  }, [expenseAccounts]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -221,9 +233,13 @@ export default function ExpenseScreen() {
           <View style={{ marginTop: 70 }}>
             <Text style={styles.totalLabel}>Total</Text>
             <View style={styles.totalRow}>
-              <Text style={styles.totalAmount}>
-                {balanceVisible ? "$2'441.000" : "••••••••"}
-              </Text>
+              {loading ? (
+                <SkeletonLine width={230} height={36} borderRadius={4} />
+              ) : (
+                <Text style={styles.totalAmount}>
+                  {balanceVisible ? formatCOP(totalExpense) : "••••••••"}
+                </Text>
+              )}
               <View style={{ flexDirection: "row", gap: 16 }}>
                 <TouchableOpacity onPress={handleSignOut}>
                   <Octicons name="sign-out" size={22} color={BCO.muted} />
@@ -241,7 +257,7 @@ export default function ExpenseScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color={Colors.red} />
+          <AccountSkeleton count={1} />
         ) : (
           expenseAccounts.map((account) => (
             <AccountCard

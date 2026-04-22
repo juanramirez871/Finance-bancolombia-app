@@ -1,34 +1,39 @@
 import { AccountCard } from "@/components/income/AccountCard";
-import {
-  ACCOUNTS,
-  ASSETS_CHART_DATA,
-  BCO,
-  INCOME_CHART_DATA,
-} from "@/constants/income";
+import { AccountSkeleton } from "@/components/income/AccountSkeleton";
+import { ASSETS_CHART_DATA, BCO, INCOME_CHART_DATA } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/income";
-import { api, type Transaction } from "@/utils/api";
 import { useTransactions } from "@/hooks/useTransactions";
 import Octicons from "@expo/vector-icons/Octicons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
 import { useBalanceVisible } from "@/hooks/useBalanceVisible";
+import { SkeletonLine } from "@/components/SkeletonLine";
 
 export default function IncomeScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const {
-    incomeAccounts,
-    loading,
-    importing,
-  } = useTransactions();
+  const { incomeAccounts, loading, importing } = useTransactions();
   const [incomeSelectedIndex, setIncomeSelectedIndex] = useState(3);
   const [assetsSelectedIndex, setAssetsSelectedIndex] = useState(7);
+
+  const totalIncome = useMemo(() => {
+    return incomeAccounts.reduce((sum, account) => {
+      return (
+        sum +
+        account.transactions.reduce((txSum, tx) => {
+          const clean = tx.amount.replace(/[^0-9]/g, "");
+          const numeric = parseInt(clean, 10);
+          return txSum + (isNaN(numeric) ? 0 : numeric);
+        }, 0)
+      );
+    }, 0);
+  }, [incomeAccounts]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -143,15 +148,23 @@ export default function IncomeScreen() {
           />
           <View style={{ marginTop: 70 }}>
             <Text style={styles.totalLabel}>Total</Text>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalAmount}>
-                {balanceVisible ? "$2'441.000" : "••••••••"}
-              </Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              {loading ? (
+                <SkeletonLine width={230} height={36} borderRadius={4} />
+              ) : (
+                <Text style={styles.totalAmount}>
+                  {balanceVisible ? formatCOP(totalIncome) : "••••••••"}
+                </Text>
+              )}
               <View style={{ flexDirection: "row", gap: 16 }}>
                 <TouchableOpacity onPress={handleSignOut}>
                   <Octicons name="sign-out" size={22} color={BCO.muted} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setBalanceVisible(!balanceVisible)}>
+                <TouchableOpacity
+                  onPress={() => setBalanceVisible(!balanceVisible)}
+                >
                   <Octicons
                     name={balanceVisible ? "eye" : "eye-closed"}
                     size={22}
@@ -164,7 +177,7 @@ export default function IncomeScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color={Colors.purple} />
+          <AccountSkeleton count={1} />
         ) : (
           incomeAccounts.map((account) => (
             <AccountCard key={account.id} account={account} />

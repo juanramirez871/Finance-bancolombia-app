@@ -24,7 +24,7 @@ class GmailService
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.]+),?(\d+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
         'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.]+),?(\d+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
         'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu \w+ en ([^,]+) por COP([\d.]+),?(\d+) no fue exitosa? el cupo de tu T\.Credito \*(\d+) no se afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
-        'paypal_recibido' => '/^Nos solicitó transferir\s*\$ ?([\d.]+)\s*COP de PayPal a su cuenta bancaria.*Importe total transferido\s*\$ ?([\d.]+)\s*COP\s*Cuenta bancaria\s*Bancolombia\s*(\d+)\s*Id\. de transacción\s*(\w+)/',
+        'paypal_recibido' => '/transferir.*?\$ ?([\d,\.]+).*?COP de PayPal.*?Bancolombia\s+(\d+).*?trans/i',
         'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d.]+)\s*COP de PayPal/',
     ];
 
@@ -174,7 +174,12 @@ class GmailService
         $emailDate = optional($headers->get('Date'))['value'] ?? null;
         $body = $this->getEmailBody($token, $messageId, $from);
         $textToParse = $body ?: '';
+        $paypalAccountTo = $this->extractPaypalAccountFromRawBody($textToParse);
         $transaction = $this->parseTransaction($textToParse, $snippet, $emailDate);
+
+        if ($transaction && $paypalAccountTo && ($transaction['account_to'] ?? null) === null) {
+            $transaction['account_to'] = $paypalAccountTo;
+        }
 
         return [
             'id' => $data['id'],
@@ -265,14 +270,14 @@ class GmailService
 
         foreach (self::PATTERNS as $type => $pattern) {
             if (preg_match($pattern, $textToParse, $matches)) {
-                return $this->buildTransaction($type, $matches, $emailDate);
+                return $this->buildTransaction($type, $matches, $emailDate, $snippet);
             }
         }
 
         if ($snippet && $text !== $snippet) {
             foreach (self::PATTERNS as $type => $pattern) {
                 if (preg_match($pattern, $snippet, $matches)) {
-                    return $this->buildTransaction($type, $matches, $emailDate);
+                    return $this->buildTransaction($type, $matches, $emailDate, $snippet);
                 }
             }
         }
@@ -280,7 +285,7 @@ class GmailService
         return null;
     }
 
-    private function buildTransaction(string $type, array $matches, ?string $emailDate = null): array
+    private function buildTransaction(string $type, array $matches, ?string $emailDate = null, string $snippet = ''): array
     {
         $parsedEmailDate = $emailDate ? $this->parseEmailDate($emailDate) : null;
         $debitCredit = 'debito';
@@ -366,7 +371,7 @@ class GmailService
                 $account = null;
                 $merchant = 'PayPal';
                 $person = null;
-                $accountTo = 'Bancolombia '.$matches[3];
+                $accountTo = $matches[2];
                 $debitCredit = 'credito';
                 break;
 
@@ -414,6 +419,22 @@ class GmailService
             'time' => $time,
             'debit_credit' => $debitCredit ?? 'debito',
         ];
+    }
+
+    private function extractPaypalAccountFromRawBody(string $rawBody): ?string
+    {
+        if (! $rawBody) {
+            return null;
+        }
+
+        $text = preg_replace('/<br\s*\/?>/i', "\n", $rawBody);
+        $text = strip_tags($text);
+
+        if (preg_match('/Bancolombia\s*(\d{4})/i', $text, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     private function parseEmailDate(string $emailDate): array

@@ -54,9 +54,9 @@ class EmailController extends Controller
                 }
 
                 $exists = Transaction::where('user_id', $user->id)
-                    ->where('merchant', $transaction['merchant'])
                     ->where('amount', $transaction['amount'])
                     ->where('date', $transaction['date'])
+                    ->where('merchant', 'like', '%'.$transaction['merchant'].'%')
                     ->exists();
 
                 if ($exists) {

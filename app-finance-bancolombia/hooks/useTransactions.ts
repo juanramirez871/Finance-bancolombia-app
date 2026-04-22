@@ -7,6 +7,10 @@ export interface UiTransaction {
   amount: string;
   date: string;
   time: string;
+  type?: string;
+  merchant?: string | null;
+  person?: string | null;
+  account_to?: string | null;
 }
 
 export interface UiAccount {
@@ -101,6 +105,10 @@ function mapToUiTransaction(t: ApiTransaction): UiTransaction {
     amount: formattedAmount,
     date: formatDate(t.date),
     time: t.time ?? "",
+    type: t.type,
+    merchant: t.merchant,
+    person: t.person,
+    account_to: t.account_to,
   };
 }
 

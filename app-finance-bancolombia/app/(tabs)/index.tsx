@@ -75,38 +75,34 @@ export default function IncomeScreen() {
   const incomeChartData = incomeAnnual.data;
   const totalIncome = incomeAnnual.yearTotal;
 
-  const assetsChartData = useMemo(() => {
-    const monthlyTotals: Record<string, number> = {};
-    let latestTs: number | null = null;
+  const commerceAnnual = useMemo(() => {
+    const totals: Record<string, number> = {};
+
     incomeAccounts.forEach((account) => {
       account.transactions.forEach((tx) => {
-        if (!tx.date) return;
         const clean = tx.amount.replace(/[^0-9]/g, "");
         const numeric = parseInt(clean, 10);
         if (isNaN(numeric)) return;
-        const date = toDate(tx.date);
-        const ts = date.getTime();
-        if (Number.isNaN(ts)) return;
-        if (latestTs === null || ts > latestTs) latestTs = ts;
-        const month = date.getMonth();
-        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
-        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+
+        const key = tx.merchant?.trim() || tx.person?.trim() || tx.account_to?.trim() || tx.label;
+        totals[key] = (totals[key] ?? 0) + numeric;
       });
     });
-    
-    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const chartYear =
-      latestTs !== null ? new Date(latestTs).getFullYear() : new Date().getFullYear();
-    let cumulative = 0;
-    return months.map((label, i) => {
-      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
-      cumulative += monthlyTotals[key] ?? 0;
-      return {
-        label,
-        value: cumulative,
-        frontColor: Colors.green,
-      };
-    });
+
+    const data = Object.entries(totals)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 12);
+
+    const noOfSections = 4;
+    const max = Math.max(...data.map((d) => d.value), 1);
+    const stepValue = getScaleStep(Math.ceil(max / noOfSections));
+
+    return {
+      data,
+      total: data[0]?.value ?? 0,
+      scale: { maxValue: stepValue * noOfSections, noOfSections, stepValue },
+    };
   }, [incomeAccounts]);
 
   const handleSignOut = useCallback(() => {
@@ -141,7 +137,7 @@ export default function IncomeScreen() {
     return `$${value}`;
   };
 
-  const niceStep = (stepRaw: number) => {
+  function getScaleStep(stepRaw: number) {
     const candidates = [
       50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000, 5_000_000,
       10_000_000,
@@ -150,23 +146,14 @@ export default function IncomeScreen() {
       candidates.find((c) => c >= stepRaw) ??
       Math.ceil(stepRaw / 10_000_000) * 10_000_000
     );
-  };
+  }
 
   const incomeScale = useMemo(() => {
     const noOfSections = 4;
     const max = Math.max(...incomeChartData.map((d) => d.value), 1);
-    const stepValue = niceStep(Math.ceil(max / noOfSections));
+    const stepValue = getScaleStep(Math.ceil(max / noOfSections));
     return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
   }, [incomeChartData]);
-
-  const assetsScale = useMemo(() => {
-    const noOfSections = 4;
-    const max = Math.max(...assetsChartData.map((d) => d.value), 1);
-    const stepValue = niceStep(Math.ceil(max / noOfSections));
-    return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
-  }, [assetsChartData]);
-
-  const assetsSelected = assetsChartData[assetsChartData.length - 1] ?? null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -244,24 +231,22 @@ export default function IncomeScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-              Activos
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}> 
+              Por comercio/persona
             </Text>
           </View>
           <View style={styles.chartCard}>
             <View style={styles.chartSummaryRow}>
-              <Text style={styles.chartSummaryLabel}>
-                {assetsSelected?.label ?? "—"}
-              </Text>
+              <Text style={styles.chartSummaryLabel}>Top categoría</Text>
               <Text style={styles.chartSummaryValue}>
-                {assetsSelected ? formatCOP(assetsSelected.value) : "—"}
+                {commerceAnnual.data[0] ? formatCOP(commerceAnnual.total) : "—"}
               </Text>
             </View>
             <AnnualLineChart
-              data={assetsChartData}
+              data={commerceAnnual.data}
               color={Colors.green}
-              maxValue={assetsScale.maxValue}
-              stepValue={assetsScale.stepValue}
+              maxValue={commerceAnnual.scale.maxValue}
+              stepValue={commerceAnnual.scale.stepValue}
               formatValue={formatCompactCOP}
             />
           </View>

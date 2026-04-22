@@ -317,7 +317,7 @@ export const styles = StyleSheet.create({
     color: Colors.yellow,
   },
   modalList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingTop: 16,
     paddingBottom: 40,
   },

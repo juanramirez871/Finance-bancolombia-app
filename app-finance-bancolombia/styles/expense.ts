@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
     minWidth: 200,
   },
   section: {
-    marginHorizontal: 0,
+    marginHorizontal: 20,
     marginBottom: 24,
     marginTop: 20,
   },
@@ -316,7 +316,7 @@ export const styles = StyleSheet.create({
     color: Colors.yellow,
   },
   modalList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingTop: 16,
     paddingBottom: 40,
   },

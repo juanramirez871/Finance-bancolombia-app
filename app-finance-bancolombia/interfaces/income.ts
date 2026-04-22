@@ -4,6 +4,10 @@ export type Transaction = {
   amount: string;
   date: string;
   time: string;
+  type?: string;
+  merchant?: string | null;
+  person?: string | null;
+  account_to?: string | null;
 };
 
 export type Account = {

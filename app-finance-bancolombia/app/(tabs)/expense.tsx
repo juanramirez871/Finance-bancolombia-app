@@ -81,13 +81,7 @@ function buildAnnualSeries(transactions: Transaction[]) {
     return { label, value };
   });
 
-  const assetData = months.map((label, i) => {
-    const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
-    const value = monthlyTotals[key] ?? 0;
-    return { label, value: monthlyData.slice(0, i + 1).reduce((sum, item) => sum + item.value, 0) };
-  });
-
-  return { chartYear, monthlyData, assetData, yearTotal };
+  return { chartYear, monthlyData, yearTotal };
 }
 
 export default function ExpenseScreen() {
@@ -157,46 +151,35 @@ export default function ExpenseScreen() {
     return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
   }, [expenseChartData]);
 
-  const assetsChartData = useMemo(() => {
-    const monthlyTotals: Record<string, number> = {};
-    let latestTs: number | null = null;
+  const expenseCategoryAnnual = useMemo(() => {
+    const totals: Record<string, number> = {};
+
     expenseAccounts.forEach((account) => {
       account.transactions.forEach((tx) => {
-        if (!tx.date) return;
         const clean = tx.amount.replace(/[^0-9]/g, "");
         const numeric = parseInt(clean, 10);
         if (isNaN(numeric)) return;
-        const date = toDate(tx.date);
-        const ts = date.getTime();
-        if (Number.isNaN(ts)) return;
-        if (latestTs === null || ts > latestTs) latestTs = ts;
-        const month = date.getMonth();
-        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
-        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+
+        const key = tx.merchant?.trim() || tx.person?.trim() || tx.account_to?.trim() || tx.label;
+        totals[key] = (totals[key] ?? 0) + numeric;
       });
     });
-    
-    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const chartYear =
-      latestTs !== null ? new Date(latestTs).getFullYear() : new Date().getFullYear();
-    let cumulative = 0;
-    return months.map((label, i) => {
-      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
-      cumulative += monthlyTotals[key] ?? 0;
-      return {
-        label,
-        value: cumulative,
-        frontColor: Colors.green,
-      };
-    });
-  }, [expenseAccounts]);
 
-  const assetsScale = useMemo(() => {
+    const data = Object.entries(totals)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 12);
+
     const noOfSections = 4;
-    const max = Math.max(...assetsChartData.map((d) => d.value), 1);
+    const max = Math.max(...data.map((d) => d.value), 1);
     const stepValue = niceStep(Math.ceil(max / noOfSections));
-    return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
-  }, [assetsChartData]);
+
+    return {
+      data,
+      topValue: data[0]?.value ?? 0,
+      scale: { maxValue: stepValue * noOfSections, noOfSections, stepValue },
+    };
+  }, [expenseAccounts]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -227,6 +210,24 @@ export default function ExpenseScreen() {
 
     const annual = buildAnnualSeries(accountSelected.transactions);
 
+    const categoryTotals = accountSelected.transactions.reduce(
+      (acc, tx) => {
+        const clean = tx.amount.replace(/[^0-9]/g, "");
+        const numeric = parseInt(clean, 10);
+        if (isNaN(numeric)) return acc;
+
+        const key = tx.merchant?.trim() || tx.person?.trim() || tx.account_to?.trim() || tx.label;
+        acc[key] = (acc[key] ?? 0) + numeric;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const categoryData = Object.entries(categoryTotals)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 12);
+
     const buildScale = (values: number[]) => {
       const noOfSections = 4;
       const max = Math.max(...values, 1);
@@ -236,10 +237,10 @@ export default function ExpenseScreen() {
 
     return {
       expenseData: annual.monthlyData,
-      assetData: annual.assetData,
+      categoryData,
       yearTotal: annual.yearTotal,
       expenseScale: buildScale(annual.monthlyData.map((d) => d.value)),
-      assetScale: buildScale(annual.assetData.map((d) => d.value)),
+      categoryScale: buildScale(categoryData.map((d) => d.value)),
     };
   }, [accountSelected]);
 
@@ -324,7 +325,7 @@ export default function ExpenseScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}> 
               Gastos anuales
             </Text>
           </View>
@@ -342,6 +343,29 @@ export default function ExpenseScreen() {
               stepValue={expenseScale.stepValue}
               formatValue={formatCompactCOP}
             />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Por comercio/persona</Text>
+          </View>
+          <View style={styles.chartCard}>
+            <View style={styles.chartSummaryRow}>
+              <Text style={styles.chartSummaryLabel}>Top categoría</Text>
+              <Text style={styles.chartSummaryValue}>
+                {expenseCategoryAnnual.data[0] ? formatCOP(expenseCategoryAnnual.topValue) : "—"}
+              </Text>
+            </View>
+            {expenseCategoryAnnual.data.length ? (
+              <AnnualLineChart
+                data={expenseCategoryAnnual.data}
+                color={Colors.green}
+                maxValue={expenseCategoryAnnual.scale.maxValue}
+                stepValue={expenseCategoryAnnual.scale.stepValue}
+                formatValue={formatCompactCOP}
+              />
+            ) : null}
           </View>
         </View>
 
@@ -404,21 +428,21 @@ export default function ExpenseScreen() {
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Activos</Text>
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Por comercio/persona</Text>
               </View>
               <View style={styles.chartCard}>
                 <View style={styles.chartSummaryRow}>
-                  <Text style={styles.chartSummaryLabel}>Total acumulado</Text>
+                  <Text style={styles.chartSummaryLabel}>Top categoría</Text>
                   <Text style={styles.chartSummaryValue}>
-                    {accountAnnual ? formatCOP(accountAnnual.assetData.at(-1)?.value ?? 0) : "—"}
+                    {accountAnnual ? formatCOP(accountAnnual.categoryData[0]?.value ?? 0) : "—"}
                   </Text>
                 </View>
                 {accountAnnual ? (
                   <AnnualLineChart
-                    data={accountAnnual.assetData}
+                    data={accountAnnual.categoryData}
                     color={Colors.green}
-                    maxValue={accountAnnual.assetScale.maxValue}
-                    stepValue={accountAnnual.assetScale.stepValue}
+                    maxValue={accountAnnual.categoryScale.maxValue}
+                    stepValue={accountAnnual.categoryScale.stepValue}
                     formatValue={formatCompactCOP}
                   />
                 ) : null}

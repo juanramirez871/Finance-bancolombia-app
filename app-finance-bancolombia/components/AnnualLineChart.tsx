@@ -61,6 +61,9 @@ export function AnnualLineChart({
     (selectedIndex !== null ? points[selectedIndex] : null) ??
     (points.length ? points[points.length - 1] : null);
 
+  const formatAxisLabel = (label: string) =>
+    label.length > 12 ? `${label.slice(0, 11)}…` : label;
+
   const yTicks = useMemo(() => {
     const tickCount = Math.max(1, Math.round(maxValue / stepValue));
     return Array.from({ length: tickCount + 1 }, (_, index) => index * stepValue).reverse();
@@ -177,11 +180,13 @@ export function AnnualLineChart({
                   position: "absolute",
                   left: point.x - 18,
                   bottom: 0,
-                  width: 36,
+                  width: 72,
                   alignItems: "center",
                 }}
               >
-                <Text style={styles.xAxisLabel}>{point.label}</Text>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={styles.xAxisLabel}>
+                  {formatAxisLabel(point.label)}
+                </Text>
               </View>
             ))}
 
@@ -195,7 +200,9 @@ export function AnnualLineChart({
                   },
                 ]}
               >
-                <Text style={styles.tooltipTitle}>{selectedPoint.label}</Text>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={styles.tooltipTitle}>
+                  {selectedPoint.label}
+                </Text>
                 <Text style={styles.tooltipValue}>
                   {formatValue(selectedPoint.value)}
                 </Text>

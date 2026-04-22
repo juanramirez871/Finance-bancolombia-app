@@ -75,7 +75,7 @@ function formatLabel(t: ApiTransaction): string {
     case "transferencia":
       return `Transferencia a ${t.account_to}`;
     case "paypal_recibido":
-      return "PayPal";
+      return t.account_to ? `PayPal *${t.account_to}` : "PayPal";
     case "avance":
       return `Avance ${t.merchant}`;
     default:
@@ -166,7 +166,9 @@ export function useTransactions() {
 
   const incomeAccounts = useMemo(() => {
     const groupedByAccount = incomeTxs.reduce((acc, t) => {
-      const account = t.account ?? "default";
+      const account = t.type === "paypal_recibido" && t.account_to
+        ? t.account_to
+        : t.account ?? "default";
       const debitCredit = t.debit_credit ?? "debito";
       const key = `${account}_${debitCredit}`;
       if (!acc[key]) {
@@ -182,7 +184,7 @@ export function useTransactions() {
       const cardType = debitCredit === "credito" ? "Tarjeta de Credito" : "Tarjeta de Debito";
       return {
         id: key,
-        label: `${cardType} *${account}`,
+        label: key.includes("paypal") ? `PayPal *${account}` : `${cardType} *${account}`,
         transactions: txs.map(mapToUiTransaction),
       };
     });

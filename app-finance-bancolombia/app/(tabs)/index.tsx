@@ -1,6 +1,6 @@
 import { AccountCard } from "@/components/income/AccountCard";
 import { AccountSkeleton } from "@/components/income/AccountSkeleton";
-import { ASSETS_CHART_DATA, BCO, INCOME_CHART_DATA } from "@/constants/income";
+import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/income";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -33,6 +33,60 @@ export default function IncomeScreen() {
         }, 0)
       );
     }, 0);
+  }, [incomeAccounts]);
+
+  const incomeChartData = useMemo(() => {
+    const monthlyTotals: Record<string, number> = {};
+    incomeAccounts.forEach((account) => {
+      account.transactions.forEach((tx) => {
+        const clean = tx.amount.replace(/[^0-9]/g, "");
+        const numeric = parseInt(clean, 10);
+        if (isNaN(numeric)) return;
+        const date = new Date(tx.date);
+        const month = date.getMonth();
+        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
+        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+      });
+    });
+
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const currentYear = new Date().getFullYear();
+    return months.map((label, i) => {
+      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+      return {
+        label,
+        value: monthlyTotals[key] ?? 0,
+        frontColor: Colors.purple,
+      };
+    });
+  }, [incomeAccounts]);
+
+  const assetsChartData = useMemo(() => {
+    const monthlyTotals: Record<string, number> = {};
+    incomeAccounts.forEach((account) => {
+      account.transactions.forEach((tx) => {
+        const clean = tx.amount.replace(/[^0-9]/g, "");
+        const numeric = parseInt(clean, 10);
+        if (isNaN(numeric)) return;
+        const date = new Date(tx.date);
+        const month = date.getMonth();
+        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
+        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+      });
+    });
+    
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const currentYear = new Date().getFullYear();
+    let cumulative = 0;
+    return months.map((label, i) => {
+      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+      cumulative += monthlyTotals[key] ?? 0;
+      return {
+        label,
+        value: cumulative,
+        frontColor: Colors.green,
+      };
+    });
   }, [incomeAccounts]);
 
   const handleSignOut = useCallback(() => {
@@ -80,26 +134,26 @@ export default function IncomeScreen() {
 
   const incomeScale = useMemo(() => {
     const noOfSections = 4;
-    const max = Math.max(...INCOME_CHART_DATA.map((d) => d.value));
+    const max = Math.max(...incomeChartData.map((d) => d.value), 1);
     const stepValue = niceStep(Math.ceil(max / noOfSections));
     return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
-  }, []);
+  }, [incomeChartData]);
 
   const assetsScale = useMemo(() => {
     const noOfSections = 4;
-    const max = Math.max(...ASSETS_CHART_DATA.map((d) => d.value));
+    const max = Math.max(...assetsChartData.map((d) => d.value), 1);
     const stepValue = niceStep(Math.ceil(max / noOfSections));
     return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
-  }, []);
+  }, [assetsChartData]);
 
   const incomeSelected =
-    INCOME_CHART_DATA[incomeSelectedIndex] ?? INCOME_CHART_DATA[0];
+    incomeChartData[incomeSelectedIndex] ?? incomeChartData[0];
   const assetsSelected =
-    ASSETS_CHART_DATA[assetsSelectedIndex] ?? ASSETS_CHART_DATA[0];
+    assetsChartData[assetsSelectedIndex] ?? assetsChartData[0];
 
   const incomeLineData = useMemo(
     () =>
-      INCOME_CHART_DATA.map((d) => ({
+      incomeChartData.map((d) => ({
         value: d.value,
         label: d.label,
         dataPointColor: d.frontColor,
@@ -117,7 +171,7 @@ export default function IncomeScreen() {
 
   const assetsLineData = useMemo(
     () =>
-      ASSETS_CHART_DATA.map((d) => ({
+      assetsChartData.map((d) => ({
         value: d.value,
         label: d.label,
         dataPointColor: d.frontColor,

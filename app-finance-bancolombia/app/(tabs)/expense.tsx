@@ -1,11 +1,6 @@
 import { AccountCard } from "@/components/income/AccountCard";
 import { AccountSkeleton } from "@/components/income/AccountSkeleton";
-import {
-  ACCOUNTS,
-  ASSETS_CHART_DATA,
-  BCO,
-  EXPENSES_CHART_DATA,
-} from "@/constants/expense";
+import { BCO } from "@/constants/expense";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/expense";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -33,13 +28,6 @@ function niceStep(stepRaw: number) {
   );
 }
 
-function buildScale(values: number[]) {
-  const noOfSections = 4;
-  const max = Math.max(...values);
-  const stepValue = niceStep(Math.ceil(max / noOfSections));
-  return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
-}
-
 function isFailedPayment(label: string) {
   return /fallid|rechaz|declinad|no\s*proces|error/i.test(label);
 }
@@ -58,6 +46,74 @@ export default function ExpenseScreen() {
       }, 0);
     }, 0);
   }, [expenseAccounts]);
+
+  const expenseChartData = useMemo(() => {
+    const monthlyTotals: Record<string, number> = {};
+    expenseAccounts.forEach((account) => {
+      account.transactions.forEach((tx) => {
+        const clean = tx.amount.replace(/[^0-9]/g, "");
+        const numeric = parseInt(clean, 10);
+        if (isNaN(numeric)) return;
+        const date = new Date(tx.date);
+        const month = date.getMonth();
+        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
+        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+      });
+    });
+
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const currentYear = new Date().getFullYear();
+    return months.map((label, i) => {
+      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+      return {
+        label,
+        value: monthlyTotals[key] ?? 0,
+        frontColor: Colors.red,
+      };
+    });
+  }, [expenseAccounts]);
+
+  const expenseScale = useMemo(() => {
+    const noOfSections = 4;
+    const max = Math.max(...expenseChartData.map((d) => d.value), 1);
+    const stepValue = niceStep(Math.ceil(max / noOfSections));
+    return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
+  }, [expenseChartData]);
+
+  const assetsChartData = useMemo(() => {
+    const monthlyTotals: Record<string, number> = {};
+    expenseAccounts.forEach((account) => {
+      account.transactions.forEach((tx) => {
+        const clean = tx.amount.replace(/[^0-9]/g, "");
+        const numeric = parseInt(clean, 10);
+        if (isNaN(numeric)) return;
+        const date = new Date(tx.date);
+        const month = date.getMonth();
+        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
+        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+      });
+    });
+    
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const currentYear = new Date().getFullYear();
+    let cumulative = 0;
+    return months.map((label, i) => {
+      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+      cumulative += monthlyTotals[key] ?? 0;
+      return {
+        label,
+        value: cumulative,
+        frontColor: Colors.green,
+      };
+    });
+  }, [expenseAccounts]);
+
+  const assetsScale = useMemo(() => {
+    const noOfSections = 4;
+    const max = Math.max(...assetsChartData.map((d) => d.value), 1);
+    const stepValue = niceStep(Math.ceil(max / noOfSections));
+    return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
+  }, [assetsChartData]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -83,6 +139,11 @@ export default function ExpenseScreen() {
   const [accountAssetsSelectedIndex, setAccountAssetsSelectedIndex] =
     useState(7);
 
+  const accountSelected = useMemo(
+    () => expenseAccounts.find((a) => a.id === accountSelectedId) ?? null,
+    [accountSelectedId, expenseAccounts],
+  );
+
   const formatCOP = useCallback(
     (value: number) =>
       new Intl.NumberFormat("es-CO", {
@@ -100,16 +161,12 @@ export default function ExpenseScreen() {
     return `$${value}`;
   };
 
-  const expensesScale = useMemo(() => {
-    return buildScale(EXPENSES_CHART_DATA.map((d) => d.value));
-  }, []);
-
   const expensesSelected =
-    EXPENSES_CHART_DATA[expensesSelectedIndex] ?? EXPENSES_CHART_DATA[0];
+    expenseChartData[expensesSelectedIndex] ?? expenseChartData[0];
 
   const expensesLineData = useMemo(
     () =>
-      EXPENSES_CHART_DATA.map((d) => ({
+      expenseChartData.map((d) => ({
         value: d.value,
         label: d.label,
         dataPointColor: d.frontColor,
@@ -121,101 +178,37 @@ export default function ExpenseScreen() {
             <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
           </View>
         ),
-      })),
+})),
     [formatCOP],
   );
-
-  const accountSelected = useMemo(() => {
-    if (!accountSelectedId) return null;
-    return ACCOUNTS.find((a) => a.id === accountSelectedId) ?? null;
-  }, [accountSelectedId]);
-
-  const accountFactor = useMemo(() => {
-    if (!accountSelectedId) return 1;
-    const id = Number(accountSelectedId);
-    const base = Number.isFinite(id) ? id : accountSelectedId.length;
-    return 0.82 + (base % 6) * 0.06;
-  }, [accountSelectedId]);
-
-  const accountExpensesData = useMemo(
-    () =>
-      EXPENSES_CHART_DATA.map((d) => ({
-        ...d,
-        value: Math.round((d.value * accountFactor) / 1_000) * 1_000,
-      })),
-    [accountFactor],
-  );
-
-  const accountAssetsData = useMemo(
-    () =>
-      ASSETS_CHART_DATA.map((d) => ({
-        ...d,
-        value: Math.round((d.value * (accountFactor + 0.08)) / 1_000) * 1_000,
-      })),
-    [accountFactor],
-  );
-
-  const accountExpensesScale = useMemo(
-    () => buildScale(accountExpensesData.map((d) => d.value)),
-    [accountExpensesData],
-  );
-
-  const accountAssetsScale = useMemo(
-    () => buildScale(accountAssetsData.map((d) => d.value)),
-    [accountAssetsData],
-  );
-
-  const accountExpensesSelected =
-    accountExpensesData[accountExpensesSelectedIndex] ?? accountExpensesData[0];
-  const accountAssetsSelected =
-    accountAssetsData[accountAssetsSelectedIndex] ?? accountAssetsData[0];
-
-  const accountExpensesLineData = useMemo(
-    () =>
-      accountExpensesData.map((d) => ({
-        value: d.value,
-        label: d.label,
-        dataPointColor: d.frontColor,
-        dataPointRadius: 4,
-        focusedDataPointColor: Colors.yellow,
-        focusedDataPointRadius: 6,
-        focusedDataPointLabelComponent: () => (
-          <View style={styles.pointLabelContainer}>
-            <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
-          </View>
-        ),
-      })),
-    [accountExpensesData, formatCOP],
-  );
-
-  const accountAssetsLineData = useMemo(
-    () =>
-      accountAssetsData.map((d) => ({
-        value: d.value,
-        label: d.label,
-        dataPointColor: d.frontColor,
-        dataPointRadius: 4,
-        focusedDataPointColor: Colors.yellow,
-        focusedDataPointRadius: 6,
-        focusedDataPointLabelComponent: () => (
-          <View style={styles.pointLabelContainer}>
-            <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
-          </View>
-        ),
-      })),
-    [accountAssetsData, formatCOP],
-  );
-
-  const openAccountCharts = useCallback((accountId: string) => {
-    setAccountSelectedId(accountId);
-    setAccountExpensesSelectedIndex(3);
-    setAccountAssetsSelectedIndex(7);
-    setAccountChartsVisible(true);
-  }, []);
 
   const getTxAmountColor = useCallback((tx: Transaction) => {
     return isFailedPayment(tx.label) ? Colors.blue : undefined;
   }, []);
+
+  const openAccountCharts = useCallback((accountId: string) => {
+    setAccountSelectedId(accountId);
+    setAccountChartsVisible(true);
+  }, []);
+
+  const accountExpensesLineData = useMemo(() => {
+    if (!accountSelected) return [];
+    return expenseChartData;
+  }, [accountSelected, expenseChartData]);
+
+  const accountExpensesScale = useMemo(() => expenseScale, [expenseScale]);
+
+  const accountExpensesSelected =
+    accountExpensesLineData[accountExpensesSelectedIndex] ?? null;
+
+  const accountAssetsLineData = useMemo(() => {
+    if (!accountSelected) return [];
+    return assetsChartData;
+  }, [accountSelected]);
+
+  const accountAssetsScale = useMemo(() => assetsScale, [assetsScale]);
+  const accountAssetsSelected =
+    accountAssetsLineData[accountAssetsSelectedIndex] ?? null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -288,9 +281,9 @@ export default function ExpenseScreen() {
             </View>
             <LineChart
               data={expensesLineData}
-              maxValue={expensesScale.maxValue}
-              noOfSections={expensesScale.noOfSections}
-              stepValue={expensesScale.stepValue}
+              maxValue={expenseScale.maxValue}
+              noOfSections={expenseScale.noOfSections}
+              stepValue={expenseScale.stepValue}
               adjustToWidth
               initialSpacing={8}
               endSpacing={8}

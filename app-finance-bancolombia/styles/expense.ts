@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
     minWidth: 200,
   },
   section: {
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     marginBottom: 24,
     marginTop: 20,
   },

@@ -1,74 +1,93 @@
 import { AccountCard } from "@/components/income/AccountCard";
 import { AccountSkeleton } from "@/components/income/AccountSkeleton";
+import { AnnualLineChart } from "@/components/AnnualLineChart";
 import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/income";
 import { useTransactions } from "@/hooks/useTransactions";
 import Octicons from "@expo/vector-icons/Octicons";
-import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
 import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 import { SkeletonLine } from "@/components/SkeletonLine";
+import { toDate } from "@/utils/income";
 
 export default function IncomeScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { incomeAccounts, loading, importing } = useTransactions();
-  const [incomeSelectedIndex, setIncomeSelectedIndex] = useState(3);
-  const [assetsSelectedIndex, setAssetsSelectedIndex] = useState(7);
+  const { incomeAccounts, loading } = useTransactions();
 
-  const totalIncome = useMemo(() => {
-    return incomeAccounts.reduce((sum, account) => {
-      return (
-        sum +
-        account.transactions.reduce((txSum, tx) => {
-          const clean = tx.amount.replace(/[^0-9]/g, "");
-          const numeric = parseInt(clean, 10);
-          return txSum + (isNaN(numeric) ? 0 : numeric);
-        }, 0)
-      );
-    }, 0);
-  }, [incomeAccounts]);
-
-  const incomeChartData = useMemo(() => {
+  const incomeAnnual = useMemo(() => {
     const monthlyTotals: Record<string, number> = {};
+    let latestTs: number | null = null;
     incomeAccounts.forEach((account) => {
       account.transactions.forEach((tx) => {
+        if (!tx.date) return;
         const clean = tx.amount.replace(/[^0-9]/g, "");
         const numeric = parseInt(clean, 10);
         if (isNaN(numeric)) return;
-        const date = new Date(tx.date);
+        const date = toDate(tx.date);
+        const ts = date.getTime();
+        if (Number.isNaN(ts)) return;
+        if (latestTs === null || ts > latestTs) latestTs = ts;
         const month = date.getMonth();
         const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
         monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
       });
     });
 
-    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const currentYear = new Date().getFullYear();
-    return months.map((label, i) => {
-      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+    const months = [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic",
+    ];
+    const chartYear =
+      latestTs !== null
+        ? new Date(latestTs).getFullYear()
+        : new Date().getFullYear();
+    let yearTotal = 0;
+    const data = months.map((label, i) => {
+      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
+      const value = monthlyTotals[key] ?? 0;
+      yearTotal += value;
       return {
         label,
-        value: monthlyTotals[key] ?? 0,
+        value,
         frontColor: Colors.purple,
       };
     });
+
+    return { chartYear, data, yearTotal };
   }, [incomeAccounts]);
+
+  const incomeChartData = incomeAnnual.data;
+  const totalIncome = incomeAnnual.yearTotal;
 
   const assetsChartData = useMemo(() => {
     const monthlyTotals: Record<string, number> = {};
+    let latestTs: number | null = null;
     incomeAccounts.forEach((account) => {
       account.transactions.forEach((tx) => {
+        if (!tx.date) return;
         const clean = tx.amount.replace(/[^0-9]/g, "");
         const numeric = parseInt(clean, 10);
         if (isNaN(numeric)) return;
-        const date = new Date(tx.date);
+        const date = toDate(tx.date);
+        const ts = date.getTime();
+        if (Number.isNaN(ts)) return;
+        if (latestTs === null || ts > latestTs) latestTs = ts;
         const month = date.getMonth();
         const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
         monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
@@ -76,10 +95,11 @@ export default function IncomeScreen() {
     });
     
     const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const currentYear = new Date().getFullYear();
+    const chartYear =
+      latestTs !== null ? new Date(latestTs).getFullYear() : new Date().getFullYear();
     let cumulative = 0;
     return months.map((label, i) => {
-      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
       cumulative += monthlyTotals[key] ?? 0;
       return {
         label,
@@ -146,46 +166,7 @@ export default function IncomeScreen() {
     return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
   }, [assetsChartData]);
 
-  const incomeSelected =
-    incomeChartData[incomeSelectedIndex] ?? incomeChartData[0];
-  const assetsSelected =
-    assetsChartData[assetsSelectedIndex] ?? assetsChartData[0];
-
-  const incomeLineData = useMemo(
-    () =>
-      incomeChartData.map((d) => ({
-        value: d.value,
-        label: d.label,
-        dataPointColor: d.frontColor,
-        dataPointRadius: 4,
-        focusedDataPointColor: Colors.yellow,
-        focusedDataPointRadius: 6,
-        focusedDataPointLabelComponent: () => (
-          <View style={styles.pointLabelContainer}>
-            <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
-          </View>
-        ),
-      })),
-    [formatCOP],
-  );
-
-  const assetsLineData = useMemo(
-    () =>
-      assetsChartData.map((d) => ({
-        value: d.value,
-        label: d.label,
-        dataPointColor: d.frontColor,
-        dataPointRadius: 4,
-        focusedDataPointColor: Colors.yellow,
-        focusedDataPointRadius: 6,
-        focusedDataPointLabelComponent: () => (
-          <View style={styles.pointLabelContainer}>
-            <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
-          </View>
-        ),
-      })),
-    [formatCOP],
-  );
+  const assetsSelected = assetsChartData[assetsChartData.length - 1] ?? null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -243,51 +224,20 @@ export default function IncomeScreen() {
             <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
               Ingresos anuales
             </Text>
-            <Text style={styles.chartHint}>Toca un mes</Text>
           </View>
           <View style={styles.chartCard}>
             <View style={styles.chartSummaryRow}>
-              <Text style={styles.chartSummaryLabel}>
-                {incomeSelected?.label ?? "—"}
-              </Text>
+              <Text style={styles.chartSummaryLabel}>Total año</Text>
               <Text style={styles.chartSummaryValue}>
-                {incomeSelected ? formatCOP(incomeSelected.value) : "—"}
+                {balanceVisible ? formatCOP(totalIncome) : "••••••••"}
               </Text>
             </View>
-            <LineChart
-              data={incomeLineData}
-              maxValue={incomeScale.maxValue}
-              noOfSections={incomeScale.noOfSections}
-              stepValue={incomeScale.stepValue}
-              adjustToWidth
-              initialSpacing={8}
-              endSpacing={8}
-              spacing={26}
-              height={180}
-              thickness={3}
+            <AnnualLineChart
+              data={incomeChartData}
               color={Colors.purple}
-              areaChart
-              startFillColor={Colors.purple}
-              endFillColor={Colors.purple}
-              startOpacity={0.22}
-              endOpacity={0.04}
-              hideRules
-              xAxisThickness={0}
-              yAxisThickness={0}
-              xAxisLabelTextStyle={styles.chartLabel}
-              yAxisTextStyle={styles.chartYLabel}
-              formatYLabel={(label: string) =>
-                formatCompactCOP(Number(label || 0))
-              }
-              focusEnabled
-              showDataPointLabelOnFocus
-              unFocusOnPressOut={false}
-              isAnimated
-              animateOnDataChange
-              onPress={async (_item: unknown, index: number) => {
-                setIncomeSelectedIndex(index);
-                await Haptics.selectionAsync();
-              }}
+              maxValue={incomeScale.maxValue}
+              stepValue={incomeScale.stepValue}
+              formatValue={formatCompactCOP}
             />
           </View>
         </View>
@@ -297,7 +247,6 @@ export default function IncomeScreen() {
             <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
               Activos
             </Text>
-            <Text style={styles.chartHint}>Toca un mes</Text>
           </View>
           <View style={styles.chartCard}>
             <View style={styles.chartSummaryRow}>
@@ -308,40 +257,12 @@ export default function IncomeScreen() {
                 {assetsSelected ? formatCOP(assetsSelected.value) : "—"}
               </Text>
             </View>
-            <LineChart
-              data={assetsLineData}
-              maxValue={assetsScale.maxValue}
-              noOfSections={assetsScale.noOfSections}
-              stepValue={assetsScale.stepValue}
-              adjustToWidth
-              initialSpacing={8}
-              endSpacing={8}
-              spacing={26}
-              height={180}
-              thickness={3}
+            <AnnualLineChart
+              data={assetsChartData}
               color={Colors.green}
-              areaChart
-              startFillColor={Colors.green}
-              endFillColor={Colors.green}
-              startOpacity={0.18}
-              endOpacity={0.04}
-              hideRules
-              xAxisThickness={0}
-              yAxisThickness={0}
-              xAxisLabelTextStyle={styles.chartLabel}
-              yAxisTextStyle={styles.chartYLabel}
-              formatYLabel={(label: string) =>
-                formatCompactCOP(Number(label || 0))
-              }
-              focusEnabled
-              showDataPointLabelOnFocus
-              unFocusOnPressOut={false}
-              isAnimated
-              animateOnDataChange
-              onPress={async (_item: unknown, index: number) => {
-                setAssetsSelectedIndex(index);
-                await Haptics.selectionAsync();
-              }}
+              maxValue={assetsScale.maxValue}
+              stepValue={assetsScale.stepValue}
+              formatValue={formatCompactCOP}
             />
           </View>
         </View>

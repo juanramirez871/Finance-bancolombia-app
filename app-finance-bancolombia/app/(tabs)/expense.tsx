@@ -1,20 +1,20 @@
 import { AccountCard } from "@/components/income/AccountCard";
 import { AccountSkeleton } from "@/components/income/AccountSkeleton";
+import { AnnualLineChart } from "@/components/AnnualLineChart";
 import { BCO } from "@/constants/expense";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/expense";
 import { useTransactions } from "@/hooks/useTransactions";
 import Octicons from "@expo/vector-icons/Octicons";
-import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
 import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 import { SkeletonLine } from "@/components/SkeletonLine";
 import type { Transaction } from "@/interfaces/income";
+import { toDate } from "@/utils/income";
 
 const STEP_CANDIDATES = [
   50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000, 5_000_000,
@@ -32,46 +32,123 @@ function isFailedPayment(label: string) {
   return /fallid|rechaz|declinad|no\s*proces|error/i.test(label);
 }
 
+function buildAnnualSeries(transactions: Transaction[]) {
+  const monthlyTotals: Record<string, number> = {};
+  let latestTs: number | null = null;
+
+  transactions.forEach((tx) => {
+    if (!tx.date) return;
+    const clean = tx.amount.replace(/[^0-9]/g, "");
+    const numeric = parseInt(clean, 10);
+    if (isNaN(numeric)) return;
+
+    const date = toDate(tx.date);
+    const ts = date.getTime();
+    if (Number.isNaN(ts)) return;
+    if (latestTs === null || ts > latestTs) latestTs = ts;
+
+    const month = date.getMonth();
+    const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
+    monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
+  });
+
+  const months = [
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
+  ];
+
+  const chartYear =
+    latestTs !== null ? new Date(latestTs).getFullYear() : new Date().getFullYear();
+
+  let yearTotal = 0;
+  let cumulative = 0;
+
+  const monthlyData = months.map((label, i) => {
+    const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
+    const value = monthlyTotals[key] ?? 0;
+    yearTotal += value;
+    cumulative += value;
+    return { label, value };
+  });
+
+  const assetData = months.map((label, i) => {
+    const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
+    const value = monthlyTotals[key] ?? 0;
+    return { label, value: monthlyData.slice(0, i + 1).reduce((sum, item) => sum + item.value, 0) };
+  });
+
+  return { chartYear, monthlyData, assetData, yearTotal };
+}
+
 export default function ExpenseScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
   const { expenseAccounts, loading } = useTransactions();
 
-  const totalExpense = useMemo(() => {
-    return expenseAccounts.reduce((sum, account) => {
-      return sum + account.transactions.reduce((txSum, tx) => {
-        const clean = tx.amount.replace(/[^0-9]/g, "");
-        const numeric = parseInt(clean, 10);
-        return txSum + (isNaN(numeric) ? 0 : numeric);
-      }, 0);
-    }, 0);
-  }, [expenseAccounts]);
-
-  const expenseChartData = useMemo(() => {
+  const expenseAnnual = useMemo(() => {
     const monthlyTotals: Record<string, number> = {};
+    let latestTs: number | null = null;
     expenseAccounts.forEach((account) => {
       account.transactions.forEach((tx) => {
+        if (!tx.date) return;
         const clean = tx.amount.replace(/[^0-9]/g, "");
         const numeric = parseInt(clean, 10);
         if (isNaN(numeric)) return;
-        const date = new Date(tx.date);
+        const date = toDate(tx.date);
+        const ts = date.getTime();
+        if (Number.isNaN(ts)) return;
+        if (latestTs === null || ts > latestTs) latestTs = ts;
         const month = date.getMonth();
         const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
         monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
       });
     });
 
-    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const currentYear = new Date().getFullYear();
-    return months.map((label, i) => {
-      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+    const months = [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic",
+    ];
+    const chartYear =
+      latestTs !== null
+        ? new Date(latestTs).getFullYear()
+        : new Date().getFullYear();
+    let yearTotal = 0;
+    const data = months.map((label, i) => {
+      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
+      const value = monthlyTotals[key] ?? 0;
+      yearTotal += value;
       return {
         label,
-        value: monthlyTotals[key] ?? 0,
+        value,
         frontColor: Colors.red,
       };
     });
+
+    return { chartYear, data, yearTotal };
   }, [expenseAccounts]);
+
+  const expenseChartData = expenseAnnual.data;
+  const totalExpense = expenseAnnual.yearTotal;
 
   const expenseScale = useMemo(() => {
     const noOfSections = 4;
@@ -82,12 +159,17 @@ export default function ExpenseScreen() {
 
   const assetsChartData = useMemo(() => {
     const monthlyTotals: Record<string, number> = {};
+    let latestTs: number | null = null;
     expenseAccounts.forEach((account) => {
       account.transactions.forEach((tx) => {
+        if (!tx.date) return;
         const clean = tx.amount.replace(/[^0-9]/g, "");
         const numeric = parseInt(clean, 10);
         if (isNaN(numeric)) return;
-        const date = new Date(tx.date);
+        const date = toDate(tx.date);
+        const ts = date.getTime();
+        if (Number.isNaN(ts)) return;
+        if (latestTs === null || ts > latestTs) latestTs = ts;
         const month = date.getMonth();
         const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
         monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
@@ -95,10 +177,11 @@ export default function ExpenseScreen() {
     });
     
     const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const currentYear = new Date().getFullYear();
+    const chartYear =
+      latestTs !== null ? new Date(latestTs).getFullYear() : new Date().getFullYear();
     let cumulative = 0;
     return months.map((label, i) => {
-      const key = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
       cumulative += monthlyTotals[key] ?? 0;
       return {
         label,
@@ -129,20 +212,36 @@ export default function ExpenseScreen() {
       ],
     );
   }, [auth]);
-  const [expensesSelectedIndex, setExpensesSelectedIndex] = useState(3);
   const [accountChartsVisible, setAccountChartsVisible] = useState(false);
   const [accountSelectedId, setAccountSelectedId] = useState<string | null>(
     null,
   );
-  const [accountExpensesSelectedIndex, setAccountExpensesSelectedIndex] =
-    useState(3);
-  const [accountAssetsSelectedIndex, setAccountAssetsSelectedIndex] =
-    useState(7);
 
   const accountSelected = useMemo(
     () => expenseAccounts.find((a) => a.id === accountSelectedId) ?? null,
     [accountSelectedId, expenseAccounts],
   );
+
+  const accountAnnual = useMemo(() => {
+    if (!accountSelected) return null;
+
+    const annual = buildAnnualSeries(accountSelected.transactions);
+
+    const buildScale = (values: number[]) => {
+      const noOfSections = 4;
+      const max = Math.max(...values, 1);
+      const stepValue = niceStep(Math.ceil(max / noOfSections));
+      return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
+    };
+
+    return {
+      expenseData: annual.monthlyData,
+      assetData: annual.assetData,
+      yearTotal: annual.yearTotal,
+      expenseScale: buildScale(annual.monthlyData.map((d) => d.value)),
+      assetScale: buildScale(annual.assetData.map((d) => d.value)),
+    };
+  }, [accountSelected]);
 
   const formatCOP = useCallback(
     (value: number) =>
@@ -161,27 +260,6 @@ export default function ExpenseScreen() {
     return `$${value}`;
   };
 
-  const expensesSelected =
-    expenseChartData[expensesSelectedIndex] ?? expenseChartData[0];
-
-  const expensesLineData = useMemo(
-    () =>
-      expenseChartData.map((d) => ({
-        value: d.value,
-        label: d.label,
-        dataPointColor: d.frontColor,
-        dataPointRadius: 4,
-        focusedDataPointColor: Colors.yellow,
-        focusedDataPointRadius: 6,
-        focusedDataPointLabelComponent: () => (
-          <View style={styles.pointLabelContainer}>
-            <Text style={styles.pointLabelText}>{formatCOP(d.value)}</Text>
-          </View>
-        ),
-})),
-    [formatCOP],
-  );
-
   const getTxAmountColor = useCallback((tx: Transaction) => {
     return isFailedPayment(tx.label) ? Colors.blue : undefined;
   }, []);
@@ -190,25 +268,6 @@ export default function ExpenseScreen() {
     setAccountSelectedId(accountId);
     setAccountChartsVisible(true);
   }, []);
-
-  const accountExpensesLineData = useMemo(() => {
-    if (!accountSelected) return [];
-    return expenseChartData;
-  }, [accountSelected, expenseChartData]);
-
-  const accountExpensesScale = useMemo(() => expenseScale, [expenseScale]);
-
-  const accountExpensesSelected =
-    accountExpensesLineData[accountExpensesSelectedIndex] ?? null;
-
-  const accountAssetsLineData = useMemo(() => {
-    if (!accountSelected) return [];
-    return assetsChartData;
-  }, [accountSelected]);
-
-  const accountAssetsScale = useMemo(() => assetsScale, [assetsScale]);
-  const accountAssetsSelected =
-    accountAssetsLineData[accountAssetsSelectedIndex] ?? null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -268,51 +327,20 @@ export default function ExpenseScreen() {
             <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
               Gastos anuales
             </Text>
-            <Text style={styles.chartHint}>Toca un mes</Text>
           </View>
           <View style={styles.chartCard}>
             <View style={styles.chartSummaryRow}>
-              <Text style={styles.chartSummaryLabel}>
-                {expensesSelected?.label ?? "—"}
-              </Text>
+              <Text style={styles.chartSummaryLabel}>Total año</Text>
               <Text style={[styles.chartSummaryValue, { color: Colors.red }]}>
-                {expensesSelected ? formatCOP(expensesSelected.value) : "—"}
+                {balanceVisible ? formatCOP(totalExpense) : "••••••••"}
               </Text>
             </View>
-            <LineChart
-              data={expensesLineData}
-              maxValue={expenseScale.maxValue}
-              noOfSections={expenseScale.noOfSections}
-              stepValue={expenseScale.stepValue}
-              adjustToWidth
-              initialSpacing={8}
-              endSpacing={8}
-              spacing={26}
-              height={180}
-              thickness={3}
+            <AnnualLineChart
+              data={expenseChartData}
               color={Colors.red}
-              areaChart
-              startFillColor={Colors.red}
-              endFillColor={Colors.red}
-              startOpacity={0.22}
-              endOpacity={0.04}
-              hideRules
-              xAxisThickness={0}
-              yAxisThickness={0}
-              xAxisLabelTextStyle={styles.chartLabel}
-              yAxisTextStyle={styles.chartYLabel}
-              formatYLabel={(label: string) =>
-                formatCompactCOP(Number(label || 0))
-              }
-              focusEnabled
-              showDataPointLabelOnFocus
-              unFocusOnPressOut={false}
-              isAnimated
-              animateOnDataChange
-              onPress={async (_item: unknown, index: number) => {
-                setExpensesSelectedIndex(index);
-                await Haptics.selectionAsync();
-              }}
+              maxValue={expenseScale.maxValue}
+              stepValue={expenseScale.stepValue}
+              formatValue={formatCompactCOP}
             />
           </View>
         </View>
@@ -351,115 +379,49 @@ export default function ExpenseScreen() {
           >
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-                  Gastos anuales
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}> 
+                  {accountSelected?.label ?? "Cuenta"}
                 </Text>
-                <Text style={styles.chartHint}>Toca un mes</Text>
               </View>
               <View style={styles.chartCard}>
                 <View style={styles.chartSummaryRow}>
-                  <Text style={styles.chartSummaryLabel}>
-                    {accountExpensesSelected?.label ?? "—"}
-                  </Text>
-                  <Text
-                    style={[styles.chartSummaryValue, { color: Colors.red }]}
-                  >
-                    {accountExpensesSelected
-                      ? formatCOP(accountExpensesSelected.value)
-                      : "—"}
+                  <Text style={styles.chartSummaryLabel}>Gastos anuales</Text>
+                  <Text style={[styles.chartSummaryValue, { color: Colors.red }]}>
+                    {accountAnnual ? formatCOP(accountAnnual.yearTotal) : "—"}
                   </Text>
                 </View>
-                <LineChart
-                  data={accountExpensesLineData}
-                  maxValue={accountExpensesScale.maxValue}
-                  noOfSections={accountExpensesScale.noOfSections}
-                  stepValue={accountExpensesScale.stepValue}
-                  adjustToWidth
-                  initialSpacing={8}
-                  endSpacing={8}
-                  spacing={26}
-                  height={180}
-                  thickness={3}
-                  color={Colors.red}
-                  areaChart
-                  startFillColor={Colors.red}
-                  endFillColor={Colors.red}
-                  startOpacity={0.22}
-                  endOpacity={0.04}
-                  hideRules
-                  xAxisThickness={0}
-                  yAxisThickness={0}
-                  xAxisLabelTextStyle={styles.chartLabel}
-                  yAxisTextStyle={styles.chartYLabel}
-                  formatYLabel={(label: string) =>
-                    formatCompactCOP(Number(label || 0))
-                  }
-                  focusEnabled
-                  showDataPointLabelOnFocus
-                  unFocusOnPressOut={false}
-                  isAnimated
-                  animateOnDataChange
-                  onPress={async (_item: unknown, index: number) => {
-                    setAccountExpensesSelectedIndex(index);
-                    await Haptics.selectionAsync();
-                  }}
-                />
+                {accountAnnual ? (
+                  <AnnualLineChart
+                    data={accountAnnual.expenseData}
+                    color={Colors.red}
+                    maxValue={accountAnnual.expenseScale.maxValue}
+                    stepValue={accountAnnual.expenseScale.stepValue}
+                    formatValue={formatCompactCOP}
+                  />
+                ) : null}
               </View>
             </View>
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-                  Activos
-                </Text>
-                <Text style={styles.chartHint}>Toca un mes</Text>
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Activos</Text>
               </View>
               <View style={styles.chartCard}>
                 <View style={styles.chartSummaryRow}>
-                  <Text style={styles.chartSummaryLabel}>
-                    {accountAssetsSelected?.label ?? "—"}
-                  </Text>
+                  <Text style={styles.chartSummaryLabel}>Total acumulado</Text>
                   <Text style={styles.chartSummaryValue}>
-                    {accountAssetsSelected
-                      ? formatCOP(accountAssetsSelected.value)
-                      : "—"}
+                    {accountAnnual ? formatCOP(accountAnnual.assetData.at(-1)?.value ?? 0) : "—"}
                   </Text>
                 </View>
-                <LineChart
-                  data={accountAssetsLineData}
-                  maxValue={accountAssetsScale.maxValue}
-                  noOfSections={accountAssetsScale.noOfSections}
-                  stepValue={accountAssetsScale.stepValue}
-                  adjustToWidth
-                  initialSpacing={8}
-                  endSpacing={8}
-                  spacing={26}
-                  height={180}
-                  thickness={3}
-                  color={Colors.green}
-                  areaChart
-                  startFillColor={Colors.green}
-                  endFillColor={Colors.green}
-                  startOpacity={0.18}
-                  endOpacity={0.04}
-                  hideRules
-                  xAxisThickness={0}
-                  yAxisThickness={0}
-                  xAxisLabelTextStyle={styles.chartLabel}
-                  yAxisTextStyle={styles.chartYLabel}
-                  formatYLabel={(label: string) =>
-                    formatCompactCOP(Number(label || 0))
-                  }
-                  focusEnabled
-                  showDataPointLabelOnFocus
-                  unFocusOnPressOut={false}
-                  isAnimated
-                  animateOnDataChange
-                  onPress={async (_item: unknown, index: number) => {
-                    setAccountAssetsSelectedIndex(index);
-                    await Haptics.selectionAsync();
-                  }}
-                />
+                {accountAnnual ? (
+                  <AnnualLineChart
+                    data={accountAnnual.assetData}
+                    color={Colors.green}
+                    maxValue={accountAnnual.assetScale.maxValue}
+                    stepValue={accountAnnual.assetScale.stepValue}
+                    formatValue={formatCompactCOP}
+                  />
+                ) : null}
               </View>
             </View>
           </ScrollView>

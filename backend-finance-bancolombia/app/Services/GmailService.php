@@ -23,6 +23,7 @@ class GmailService
         'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.,]+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
         'compra_bancolombia' => '/Bancolombia:\s*Compraste\s+(?:COP|\$)\s*([\d.,]+)\s+en\s+(.+?)\s+con\s+tu\s+(T\.Cred|T\.Deb)\s+\*(\d+),?\s*el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/i',
         'recibir_transferencia_llave' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+).*?\bel\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
+        'recibir_transferencia_llave_snippet' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+)/iu',
         'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.,]+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
         'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
@@ -435,6 +436,17 @@ class GmailService
                 $debitCredit = 'credito';
                 break;
 
+            case 'recibir_transferencia_llave_snippet':
+                $amount = $this->parseCurrencyAmount($matches[2]);
+                $date = $parsedEmailDate['date'];
+                $time = $parsedEmailDate['time'];
+                $account = $matches[3];
+                $merchant = null;
+                $person = trim($matches[1]);
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
             case 'avance':
                 $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $matches[4];
@@ -508,6 +520,7 @@ class GmailService
             'retiro' => 'retiro',
             'recibir_qr' => 'recibido_qr',
             'recibir_transferencia_llave' => 'recibido_qr',
+            'recibir_transferencia_llave_snippet' => 'recibido_qr',
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
             'pago_no_exitoso_tarjeta' => 'pago_no_exitoso',

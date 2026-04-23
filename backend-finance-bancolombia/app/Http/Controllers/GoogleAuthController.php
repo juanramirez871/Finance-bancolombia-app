@@ -58,7 +58,9 @@ class GoogleAuthController extends Controller
 
             if ($user) {
                 $user->googleId = $googleId;
-                $user->token = Str::random(60);
+                if (! $user->token) {
+                    $user->token = Str::random(60);
+                }
                 $user->save();
             } else {
                 $user = User::create([

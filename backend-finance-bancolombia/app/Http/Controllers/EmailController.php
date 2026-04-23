@@ -62,8 +62,11 @@ class EmailController extends Controller
 
                 $emailId = $email['id'] ?? null;
 
-                $normalizedDebitCredit = $transaction['type'] === Transaction::TYPE_RECIBIDO_QR
-                    ? 'credito'
+                $normalizedDebitCredit = in_array($transaction['type'], [
+                    Transaction::TYPE_RECIBIDO_QR,
+                    Transaction::TYPE_PAYPAL_RECIBIDO,
+                ], true)
+                    ? 'debito'
                     : (in_array(($transaction['debit_credit'] ?? null), ['debito', 'credito'], true)
                         ? $transaction['debit_credit']
                         : 'debito');

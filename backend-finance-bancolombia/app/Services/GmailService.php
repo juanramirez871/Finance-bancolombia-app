@@ -431,8 +431,8 @@ class GmailService
             ? $debitCredit
             : 'debito';
 
-        if ($mappedType === 'recibido_qr') {
-            $normalizedDebitCredit = 'credito';
+        if (in_array($mappedType, ['recibido_qr', 'paypal_recibido'], true)) {
+            $normalizedDebitCredit = 'debito';
         }
 
         return [

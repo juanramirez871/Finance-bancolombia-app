@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useContext } from "react";
 import type { UiTransaction } from "@/interfaces/transactions";
 import { api, type Transaction as ApiTransaction } from "@/utils/api";
+import { TransactionFilterContext } from "@/app/_layout";
 
 type ManualTransactionInput = {
   kind: "income" | "expense";
@@ -63,6 +64,18 @@ function formatDate(dateStr: string | null): string {
 
   return raw;
 }
+
+const toComparableDateValue = (dateStr: string | null): number | null => {
+  const normalized = formatDate(dateStr);
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00`);
+  const timestamp = parsed.getTime();
+
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
 
 function formatLabel(t: ApiTransaction): string {
   const accountNum = t.account ?? '';
@@ -127,6 +140,7 @@ function mapToUiTransaction(t: ApiTransaction): UiTransaction {
 }
 
 export function useTransactions(enabled = true) {
+  const transactionFilter = useContext(TransactionFilterContext);
   const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -198,10 +212,34 @@ export function useTransactions(enabled = true) {
     fetchTransactions();
   }, [fetchTransactions]);
 
-  const incomeTxs = transactions.filter((t) =>
+  const startTs = useMemo(
+    () => toComparableDateValue(transactionFilter?.startDate ?? null),
+    [transactionFilter?.startDate],
+  );
+  const endTs = useMemo(
+    () => toComparableDateValue(transactionFilter?.endDate ?? null),
+    [transactionFilter?.endDate],
+  );
+
+  const filteredTransactions = useMemo(() => {
+    if (startTs === null || endTs === null) {
+      return transactions;
+    }
+
+    return transactions.filter((transaction) => {
+      const txTs = toComparableDateValue(transaction.date);
+      if (txTs === null) {
+        return false;
+      }
+
+      return txTs >= startTs && txTs <= endTs;
+    });
+  }, [endTs, startTs, transactions]);
+
+  const incomeTxs = filteredTransactions.filter((t) =>
     ["recibido_qr", "paypal_recibido", "ingreso_manual"].includes(t.type),
   );
-  const expenseTxs = transactions.filter((t) =>
+  const expenseTxs = filteredTransactions.filter((t) =>
     ["compra", "transferencia", "retiro", "avance", "pago_no_exitoso", "egreso_manual"].includes(t.type),
   );
 
@@ -285,7 +323,7 @@ export function useTransactions(enabled = true) {
   );
 
   return {
-    transactions,
+    transactions: filteredTransactions,
     incomeTransactions,
     expenseTransactions,
     incomeAccounts,

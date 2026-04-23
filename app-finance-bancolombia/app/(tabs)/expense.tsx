@@ -38,7 +38,13 @@ export default function ExpenseScreen() {
 
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { expenseAccounts, loading, addManualTransaction } = useTransactions(Boolean(auth?.isAuthenticated));
+  const {
+    expenseAccounts,
+    loading,
+    addManualTransaction,
+    manualExpenseConceptOptions,
+    manualExpenseAccountOptions,
+  } = useTransactions(Boolean(auth?.isAuthenticated));
   const [manualModalVisible, setManualModalVisible] = useState(false);
   const expenseAccountsForMetrics = useMemo(
     () => expenseAccounts.map((account) => ({
@@ -304,6 +310,8 @@ export default function ExpenseScreen() {
         ctaLabel="Guardar egreso"
         accentColor={Colors.red}
         kind="expense"
+        conceptOptions={manualExpenseConceptOptions}
+        accountOptions={manualExpenseAccountOptions}
         onClose={() => setManualModalVisible(false)}
         onSave={handleSaveManualExpense}
       />

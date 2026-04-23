@@ -27,7 +27,13 @@ export default function IncomeScreen() {
 
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { incomeAccounts, loading, addManualTransaction } = useTransactions(Boolean(auth?.isAuthenticated));
+  const {
+    incomeAccounts,
+    loading,
+    addManualTransaction,
+    manualIncomeConceptOptions,
+    manualIncomeAccountOptions,
+  } = useTransactions(Boolean(auth?.isAuthenticated));
   const [manualModalVisible, setManualModalVisible] = useState(false);
   const incomeAnnual = useMemo(
     () => buildAnnualSeriesFromAccounts(incomeAccounts),
@@ -173,6 +179,8 @@ export default function IncomeScreen() {
         ctaLabel="Guardar ingreso"
         accentColor={Colors.green}
         kind="income"
+        conceptOptions={manualIncomeConceptOptions}
+        accountOptions={manualIncomeAccountOptions}
         onClose={() => setManualModalVisible(false)}
         onSave={handleSaveManualIncome}
       />

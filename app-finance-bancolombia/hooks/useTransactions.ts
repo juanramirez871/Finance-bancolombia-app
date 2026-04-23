@@ -11,6 +11,14 @@ type ManualTransactionInput = {
   time?: string;
 };
 
+const uniqueNonEmpty = (values: Array<string | null | undefined>) => {
+  const normalized = values
+    .map((value) => value?.trim() ?? "")
+    .filter((value) => value.length > 0);
+
+  return Array.from(new Set(normalized));
+};
+
 function formatDate(dateStr: string | null): string {
 
   if (!dateStr) return "";
@@ -256,12 +264,36 @@ export function useTransactions(enabled = true) {
     });
   }, [expenseTxs]);
 
+  const manualIncomeConceptOptions = useMemo(
+    () => uniqueNonEmpty(incomeTxs.map((t) => t.person ?? t.merchant ?? t.account_to)),
+    [incomeTxs],
+  );
+
+  const manualExpenseConceptOptions = useMemo(
+    () => uniqueNonEmpty(expenseTxs.map((t) => t.merchant ?? t.person ?? t.account_to)),
+    [expenseTxs],
+  );
+
+  const manualIncomeAccountOptions = useMemo(
+    () => uniqueNonEmpty(incomeTxs.map((t) => (t.type === "paypal_recibido" ? t.account_to : t.account))),
+    [incomeTxs],
+  );
+
+  const manualExpenseAccountOptions = useMemo(
+    () => uniqueNonEmpty(expenseTxs.map((t) => t.account)),
+    [expenseTxs],
+  );
+
   return {
     transactions,
     incomeTransactions,
     expenseTransactions,
     incomeAccounts,
     expenseAccounts,
+    manualIncomeConceptOptions,
+    manualExpenseConceptOptions,
+    manualIncomeAccountOptions,
+    manualExpenseAccountOptions,
     loading,
     importing,
     importResult,

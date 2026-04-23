@@ -24,6 +24,8 @@ type ManualTransactionModalProps = {
   ctaLabel: string;
   accentColor: string;
   kind: "income" | "expense";
+  conceptOptions?: string[];
+  accountOptions?: string[];
   onClose: () => void;
   onSave: (data: {
     amount: number;
@@ -32,6 +34,8 @@ type ManualTransactionModalProps = {
   }) => Promise<void>;
 };
 
+type PickerTarget = "concept" | "account" | null;
+
 export function ManualTransactionModal({
   visible,
   title,
@@ -39,6 +43,8 @@ export function ManualTransactionModal({
   ctaLabel,
   accentColor,
   kind,
+  conceptOptions = [],
+  accountOptions = [],
   onClose,
   onSave,
 }: ManualTransactionModalProps) {
@@ -48,9 +54,22 @@ export function ManualTransactionModal({
   const [account, setAccount] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
+  const [isCustomConcept, setIsCustomConcept] = useState(conceptOptions.length === 0);
+  const [isCustomAccount, setIsCustomAccount] = useState(accountOptions.length === 0);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(36)).current;
   const keyboardInset = useRef(new Animated.Value(0)).current;
+
+  const cleanConceptOptions = useMemo(
+    () => Array.from(new Set(conceptOptions.map((item) => item.trim()).filter(Boolean))),
+    [conceptOptions],
+  );
+
+  const cleanAccountOptions = useMemo(
+    () => Array.from(new Set(accountOptions.map((item) => item.trim()).filter(Boolean))),
+    [accountOptions],
+  );
 
   const amountNumber = useMemo(() => {
     const digits = amount.replace(/\D/g, "");
@@ -75,6 +94,81 @@ export function ManualTransactionModal({
         numeric,
       ),
     );
+  };
+
+  const pickerOptions = pickerTarget === "concept" ? cleanConceptOptions : cleanAccountOptions;
+  const pickerTitle = pickerTarget === "concept"
+    ? kind === "income"
+      ? "Selecciona un origen"
+      : "Selecciona un comercio"
+    : "Selecciona una cuenta";
+
+  const isCustomActive = pickerTarget === "concept" ? isCustomConcept : isCustomAccount;
+  const selectedValue = pickerTarget === "concept" ? concept : account;
+
+  const openPicker = (target: Exclude<PickerTarget, null>) => {
+    Keyboard.dismiss();
+    setPickerTarget(target);
+  };
+
+  const useCustomValue = () => {
+    if (pickerTarget === "concept") {
+      setIsCustomConcept(true);
+      setConcept("");
+    } else if (pickerTarget === "account") {
+      setIsCustomAccount(true);
+      setAccount("");
+    }
+
+    setPickerTarget(null);
+  };
+
+  const toggleAccountInputMode = () => {
+    if (cleanAccountOptions.length === 0) {
+      return;
+    }
+
+    if (isCustomAccount) {
+      if (account && !cleanAccountOptions.includes(account)) {
+        setAccount("");
+      }
+      setIsCustomAccount(false);
+      return;
+    }
+
+    setPickerTarget(null);
+    setIsCustomAccount(true);
+    setAccount("");
+  };
+
+  const toggleConceptInputMode = () => {
+    if (cleanConceptOptions.length === 0) {
+      return;
+    }
+
+    if (isCustomConcept) {
+      if (concept && !cleanConceptOptions.includes(concept)) {
+        setConcept("");
+      }
+      setIsCustomConcept(false);
+      return;
+    }
+
+    setPickerTarget(null);
+    setIsCustomConcept(true);
+    setConcept("");
+  };
+
+  const selectValueFromPicker = (value: string) => {
+    if (pickerTarget === "concept") {
+      setIsCustomConcept(false);
+      setConcept(value);
+    } else if (pickerTarget === "account") {
+      setIsCustomAccount(false);
+      setAccount(value);
+    }
+
+    setPickerTarget(null);
   };
 
   useEffect(() => {
@@ -162,6 +256,9 @@ export function ManualTransactionModal({
     setAmount("");
     setConcept("");
     setAccount("");
+    setPickerTarget(null);
+    setIsCustomConcept(cleanConceptOptions.length === 0);
+    setIsCustomAccount(cleanAccountOptions.length === 0);
     setError("");
     setSaving(false);
   };
@@ -224,7 +321,6 @@ export function ManualTransactionModal({
           >
             <Pressable onPress={() => {}}>
               <View style={modalStyles.handle} />
-
               <ScrollView
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
@@ -249,44 +345,98 @@ export function ManualTransactionModal({
 
                 <View style={modalStyles.field}>
                   <Text style={modalStyles.label}>Cuenta</Text>
-                  <View style={modalStyles.inputShell}>
-                    <View style={modalStyles.inputPrefix}>
-                      <Octicons name="credit-card" size={14} color="#a9a9b4" />
+                  {!isCustomAccount && cleanAccountOptions.length > 0 ? (
+                    <Pressable
+                      style={modalStyles.selectShell}
+                      onPress={() => openPicker("account")}
+                    >
+                      <Pressable
+                        style={modalStyles.inputPrefix}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          toggleAccountInputMode();
+                        }}
+                      >
+                        <Octicons name="credit-card" size={14} color="#a9a9b4" />
+                      </Pressable>
+                      <Text
+                        style={[modalStyles.selectText, !account && modalStyles.selectPlaceholder]}
+                      >
+                        {account || "Seleccionar cuenta"}
+                      </Text>
+                      <Octicons name="chevron-down" size={14} color="#a9a9b4" />
+                    </Pressable>
+                  ) : (
+                    <View style={modalStyles.inputShell}>
+                      <Pressable
+                        style={modalStyles.inputPrefix}
+                        onPress={toggleAccountInputMode}
+                      >
+                        <Octicons name="credit-card" size={14} color="#a9a9b4" />
+                      </Pressable>
+                      <TextInput
+                        value={account}
+                        onChangeText={setAccount}
+                        placeholder="Ej: 9095"
+                        keyboardType="number-pad"
+                        placeholderTextColor="#8a8a8a"
+                        style={modalStyles.input}
+                        maxLength={8}
+                      />
                     </View>
-                    <TextInput
-                      value={account}
-                      onChangeText={setAccount}
-                      placeholder="Ej: 9095"
-                      keyboardType="number-pad"
-                      placeholderTextColor="#8a8a8a"
-                      style={modalStyles.input}
-                      maxLength={8}
-                    />
-                  </View>
+                  )}
                 </View>
 
                 <View style={modalStyles.field}>
                   <Text style={modalStyles.label}>
                     {kind === "income" ? "Origen" : "Comercio"}
                   </Text>
-                  <View style={modalStyles.inputShell}>
-                    <View style={modalStyles.inputPrefix}>
-                      <Octicons
-                        name={kind === "income" ? "person" : "briefcase"}
-                        size={14}
-                        color="#a9a9b4"
+                  {!isCustomConcept && cleanConceptOptions.length > 0 ? (
+                    <Pressable
+                      style={modalStyles.selectShell}
+                      onPress={() => openPicker("concept")}
+                    >
+                      <Pressable
+                        style={modalStyles.inputPrefix}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          toggleConceptInputMode();
+                        }}
+                      >
+                        <Octicons
+                          name={kind === "income" ? "person" : "briefcase"}
+                          size={14}
+                          color="#a9a9b4"
+                        />
+                      </Pressable>
+                      <Text
+                        style={[modalStyles.selectText, !concept && modalStyles.selectPlaceholder]}
+                      >
+                        {concept || (kind === "income" ? "Seleccionar origen" : "Seleccionar comercio")}
+                      </Text>
+                      <Octicons name="chevron-down" size={14} color="#a9a9b4" />
+                    </Pressable>
+                  ) : (
+                    <View style={modalStyles.inputShell}>
+                      <Pressable
+                        style={modalStyles.inputPrefix}
+                        onPress={toggleConceptInputMode}
+                      >
+                        <Octicons
+                          name={kind === "income" ? "person" : "briefcase"}
+                          size={14}
+                          color="#a9a9b4"
+                        />
+                      </Pressable>
+                      <TextInput
+                        value={concept}
+                        onChangeText={setConcept}
+                        placeholder={kind === "income" ? "Ej: Freelance" : "Ej: Mercado"}
+                        placeholderTextColor="#8a8a8a"
+                        style={modalStyles.input}
                       />
                     </View>
-                    <TextInput
-                      value={concept}
-                      onChangeText={setConcept}
-                      placeholder={
-                        kind === "income" ? "Ej: Freelance" : "Ej: Mercado"
-                      }
-                      placeholderTextColor="#8a8a8a"
-                      style={modalStyles.input}
-                    />
-                  </View>
+                  )}
                 </View>
 
                 {error ? <Text style={modalStyles.error}>{error}</Text> : null}
@@ -319,6 +469,50 @@ export function ManualTransactionModal({
             </Pressable>
           </Animated.View>
         </Animated.View>
+
+        <Modal
+          visible={pickerTarget !== null}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setPickerTarget(null)}
+        >
+          <Pressable
+            style={modalStyles.pickerOverlay}
+            onPress={() => setPickerTarget(null)}
+          >
+            <Pressable style={modalStyles.pickerCard} onPress={() => {}}>
+              <Text style={modalStyles.pickerTitle}>{pickerTitle}</Text>
+
+              {pickerOptions.length > 0 ? (
+                <ScrollView
+                  style={modalStyles.pickerList}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {pickerOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      style={modalStyles.pickerOption}
+                      onPress={() => selectValueFromPicker(option)}
+                    >
+                      <Text
+                        style={[
+                          modalStyles.pickerOptionText,
+                          selectedValue === option && modalStyles.pickerOptionTextActive,
+                        ]}
+                      >
+                        {option}
+                      </Text>
+                      {selectedValue === option && !isCustomActive ? (
+                        <Octicons name="check" size={16} color={accentColor} />
+                      ) : null}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : null}
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     </Modal>
   );
@@ -390,6 +584,24 @@ const modalStyles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
+  selectShell: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#232533",
+    borderWidth: 1,
+    borderColor: "#363a4f",
+    borderRadius: 12,
+    paddingRight: 12,
+  },
+  selectText: {
+    color: Colors.white,
+    fontSize: 15,
+    flex: 1,
+  },
+  selectPlaceholder: {
+    color: "#8a8a8a",
+  },
   inputPrefix: {
     width: 42,
     alignItems: "center",
@@ -414,6 +626,12 @@ const modalStyles = StyleSheet.create({
     color: Colors.red,
     fontSize: 13,
     marginTop: 4,
+  },
+  linkText: {
+    marginTop: 4,
+    color: "#c8d1f9",
+    fontSize: 12,
+    fontWeight: "600",
   },
   actions: {
     flexDirection: "row",
@@ -443,5 +661,66 @@ const modalStyles = StyleSheet.create({
   primaryText: {
     color: Colors.white,
     fontWeight: "800",
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  pickerCard: {
+    backgroundColor: "#17181f",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: "#2f3240",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 26,
+    maxHeight: "55%",
+  },
+  pickerTitle: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  pickerList: {
+    maxHeight: 280,
+  },
+  pickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2d3140",
+  },
+  pickerOptionText: {
+    color: "#dde2f2",
+    fontSize: 14,
+    flex: 1,
+    paddingRight: 12,
+  },
+  pickerOptionTextActive: {
+    color: Colors.white,
+    fontWeight: "700",
+  },
+  customOption: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#4f556c",
+    borderRadius: 12,
+    backgroundColor: "#232533",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  customOptionText: {
+    color: "#d6dbec",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

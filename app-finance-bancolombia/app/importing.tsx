@@ -6,6 +6,7 @@ import { AuthContext } from "./_layout";
 import { useContext, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 
 const PHASES = {
   starting: "Preparando importacion...",
@@ -120,20 +121,11 @@ export default function ImportingScreen() {
         </View>
 
         <Text style={styles.percent}>{progress}%</Text>
-
-        {result ? (
-          <Text style={styles.meta}>
-            Guardados: {result.saved} | Omitidos: {result.skipped}
-          </Text>
-        ) : total > 0 ? (
-          <Text style={styles.meta}>
-            Procesados: {processed} de {total}
-          </Text>
-        ) : (
-          <Text style={styles.meta}>Esto puede tardar unos segundos...</Text>
-        )}
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Image
+          style={styles.hero}
+          source={require("@/assets/images/app.svg")}
+        />
       </View>
     </SafeAreaView>
   );
@@ -143,6 +135,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: BCO.bg,
+  },
+  hero: {
+    width: 220,
+    height: 220,
+    marginBottom: 6,
   },
   container: {
     flex: 1,

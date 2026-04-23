@@ -37,6 +37,8 @@ type ManualTransactionModalProps = {
 
 type PickerTarget = "concept" | "account" | null;
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 const MODAL_COLORS = {
   overlay: "rgba(48, 45, 43, 0.55)",
   sheet: BCO.card,
@@ -309,7 +311,7 @@ export function ManualTransactionModal({
           />
         </Pressable>
 
-        <Pressable
+        <AnimatedPressable
           style={[modalStyles.sheetHost, { paddingBottom: keyboardInset }]}
           onPress={handleClose}
         >
@@ -468,7 +470,7 @@ export function ManualTransactionModal({
               </ScrollView>
             </Pressable>
           </Animated.View>
-        </Pressable>
+        </AnimatedPressable>
 
         <Modal
           visible={pickerTarget !== null}

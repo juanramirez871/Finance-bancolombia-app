@@ -29,14 +29,25 @@ function isFailedPayment(label: string) {
   return /fallid|rechaz|declinad|no\s*proces|error/i.test(label);
 }
 
+function isFailedPaymentType(tx: Transaction) {
+  return tx.type === "pago_no_exitoso";
+}
+
 export default function ExpenseScreen() {
 
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
   const { expenseAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
-  const expenseAnnual = useMemo(
-    () => buildAnnualSeriesFromAccounts(expenseAccounts),
+  const expenseAccountsForMetrics = useMemo(
+    () => expenseAccounts.map((account) => ({
+      ...account,
+      transactions: account.transactions.filter((tx) => !isFailedPaymentType(tx)),
+    })),
     [expenseAccounts],
+  );
+  const expenseAnnual = useMemo(
+    () => buildAnnualSeriesFromAccounts(expenseAccountsForMetrics),
+    [expenseAccountsForMetrics],
   );
 
   const expenseChartData = expenseAnnual.data;
@@ -46,12 +57,12 @@ export default function ExpenseScreen() {
   }, [expenseChartData]);
 
   const expenseCategoryAnnual = useMemo(() => {
-    const categories = buildTopCategoriesFromAccounts(expenseAccounts);
+    const categories = buildTopCategoriesFromAccounts(expenseAccountsForMetrics);
     return {
       ...categories,
       scale: buildScale(categories.data.map((point) => point.value)),
     };
-  }, [expenseAccounts]);
+  }, [expenseAccountsForMetrics]);
 
   const [accountChartsVisible, setAccountChartsVisible] = useState(false);
   const [accountSelectedId, setAccountSelectedId] = useState<string | null>(
@@ -66,8 +77,11 @@ export default function ExpenseScreen() {
   const accountAnnual = useMemo(() => {
 
     if (!accountSelected) return null;
-    const annual = buildAnnualSeriesFromTransactions(accountSelected.transactions);
-    const categories = buildTopCategoriesFromTransactions(accountSelected.transactions);
+    const accountTransactionsForMetrics = accountSelected.transactions.filter(
+      (tx) => !isFailedPaymentType(tx),
+    );
+    const annual = buildAnnualSeriesFromTransactions(accountTransactionsForMetrics);
+    const categories = buildTopCategoriesFromTransactions(accountTransactionsForMetrics);
 
     return {
       expenseData: annual.data,

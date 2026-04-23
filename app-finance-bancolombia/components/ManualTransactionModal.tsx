@@ -309,8 +309,9 @@ export function ManualTransactionModal({
           />
         </Pressable>
 
-        <Animated.View
+        <Pressable
           style={[modalStyles.sheetHost, { paddingBottom: keyboardInset }]}
+          onPress={handleClose}
         >
           <Animated.View
             style={[
@@ -318,7 +319,7 @@ export function ManualTransactionModal({
               { transform: [{ translateY: sheetTranslateY }] },
             ]}
           >
-            <Pressable onPress={() => {}}>
+            <Pressable onPress={(event) => event.stopPropagation()}>
               <View style={modalStyles.handle} />
               <ScrollView
                 keyboardShouldPersistTaps="handled"
@@ -467,7 +468,7 @@ export function ManualTransactionModal({
               </ScrollView>
             </Pressable>
           </Animated.View>
-        </Animated.View>
+        </Pressable>
 
         <Modal
           visible={pickerTarget !== null}

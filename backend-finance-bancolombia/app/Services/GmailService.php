@@ -23,7 +23,8 @@ class GmailService
         'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
         'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.,]+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
-        'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu \w+ en ([^,]+) por COP([\d.,]+) no fue exitosa? el cupo de tu T\.Credito \*(\d+) no se afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
+        'pago_no_exitoso_tarjeta' => '/Bancolombia:\s*tu\s+compra\s+con\s+T\.cred\s+\*(\d+)\s+por\s+\$\s*([\d.,]+)\s+no\s+fue\s+exitosa,?\s+los\s+datos\s+de\s+tu\s+t\.cred\s+estan\s+incorrectos\.?\s*(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/i',
+        'pago_no_exitoso' => '/(?:Notificación\s+Transaccional\s+)?Bancolombia:\s*tu\s+\w+\s+en\s+(.+?)\s+por\s+COP\s*([\d.,]+)\s+no\s+fue\s+exitosa,?\s+el\s+cupo\s+de\s+tu\s+T\.Credito\s+\*(\d+)\s+no\s+se\s+afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/i',
         'paypal_recibido' => '/transferir.*?\$ ?([\d,\.]+).*?COP de PayPal.*?Bancolombia\s+(\d+).*?trans/i',
         'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d,.]+)\s*COP de PayPal/',
     ];
@@ -382,6 +383,17 @@ class GmailService
                 $debitCredit = 'credito';
                 break;
 
+            case 'pago_no_exitoso_tarjeta':
+                $amount = $this->parseCurrencyAmount($matches[2]);
+                $date = $matches[4];
+                $time = $matches[3];
+                $account = $matches[1];
+                $merchant = null;
+                $person = null;
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
             case 'paypal_recibido':
                 $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $parsedEmailDate['date'];
@@ -422,6 +434,7 @@ class GmailService
             'recibir_qr' => 'recibido_qr',
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
+            'pago_no_exitoso_tarjeta' => 'pago_no_exitoso',
             'paypal_recibido' => 'paypal_recibido',
             'paypal_recibido_snippet' => 'paypal_recibido',
         ];

@@ -7,6 +7,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,6 +29,21 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
+                if ($e instanceof ValidationException) {
+                    return response()->json([
+                        'error' => 'Validation failed',
+                        'messages' => $e->errors(),
+                    ], 422);
+                }
+
+                if ($e instanceof HttpExceptionInterface) {
+                    $status = $e->getStatusCode();
+
+                    return response()->json([
+                        'error' => $e->getMessage() ?: 'Request failed',
+                    ], $status);
+                }
+
                 Log::error('API Error', [
                     'url' => $request->fullUrl(),
                     'method' => $request->method(),
@@ -37,9 +54,15 @@ return Application::configure(basePath: dirname(__DIR__))
                     'line' => $e->getLine(),
                 ]);
 
-                return response()->json([
-                    'error' => 'Internal server error',
-                ], 500);
+                $payload = ['error' => 'Internal server error'];
+
+                if (config('app.debug')) {
+                    $payload['message'] = $e->getMessage();
+                    $payload['file'] = $e->getFile();
+                    $payload['line'] = $e->getLine();
+                }
+
+                return response()->json($payload, 500);
             }
 
             return null;

@@ -18,14 +18,14 @@ class GmailService
     ];
 
     private const PATTERNS = [
-        'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.]+),(\d+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
-        'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.]+),?(\d+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
-        'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.]+),?(\d+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
-        'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.]+),?(\d+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
-        'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.]+),?(\d+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
-        'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu \w+ en ([^,]+) por COP([\d.]+),?(\d+) no fue exitosa? el cupo de tu T\.Credito \*(\d+) no se afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
+        'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.,]+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
+        'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.,]+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
+        'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
+        'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
+        'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.,]+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
+        'pago_no_exitoso' => '/Notificación Transaccional Bancolombia: tu \w+ en ([^,]+) por COP([\d.,]+) no fue exitosa? el cupo de tu T\.Credito \*(\d+) no se afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/',
         'paypal_recibido' => '/transferir.*?\$ ?([\d,\.]+).*?COP de PayPal.*?Bancolombia\s+(\d+).*?trans/i',
-        'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d.]+)\s*COP de PayPal/',
+        'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d,.]+)\s*COP de PayPal/',
     ];
 
     public function __construct(
@@ -313,69 +313,69 @@ class GmailService
         $person = null;
         $date = null;
         $time = null;
-        $amount = '0';
+        $amount = 0.0;
 
         switch ($type) {
             case 'compra':
-                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-                $date = $matches[6];
-                $time = $matches[7];
-                $account = $matches[5];
-                $merchant = trim($matches[3]);
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $matches[5];
+                $time = $matches[6];
+                $account = $matches[4];
+                $merchant = trim($matches[2]);
                 $person = null;
                 $accountTo = null;
-                $debitCredit = $matches[4] === 'T.Cred' ? 'credito' : 'debito';
+                $debitCredit = $matches[3] === 'T.Cred' ? 'credito' : 'debito';
                 break;
 
             case 'transferencia':
-                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-                $date = $matches[5];
-                $time = $matches[6];
-                $account = $matches[3];
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $matches[4];
+                $time = $matches[5];
+                $account = $matches[2];
                 $merchant = null;
                 $person = null;
-                $accountTo = $matches[4];
+                $accountTo = $matches[3];
                 $debitCredit = 'debito';
                 break;
 
             case 'retiro':
-                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-                $date = $matches[5];
-                $time = $matches[6];
-                $account = $matches[4];
-                $merchant = trim($matches[3]);
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $matches[4];
+                $time = $matches[5];
+                $account = $matches[3];
+                $merchant = trim($matches[2]);
                 $person = null;
                 $accountTo = null;
                 $debitCredit = 'debito';
                 break;
 
             case 'recibir_qr':
-                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-                $date = $matches[5];
-                $time = $matches[6];
-                $account = $matches[4];
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $matches[4];
+                $time = $matches[5];
+                $account = $matches[3];
                 $merchant = null;
-                $person = trim($matches[3]);
+                $person = trim($matches[2]);
                 $accountTo = null;
                 $debitCredit = 'credito';
                 break;
 
             case 'avance':
-                $amount = str_replace('.', '', $matches[1]).'.'.$matches[2];
-                $date = $matches[5];
-                $time = $matches[4];
-                $account = $matches[6];
-                $merchant = trim($matches[3]);
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $matches[4];
+                $time = $matches[3];
+                $account = $matches[5];
+                $merchant = trim($matches[2]);
                 $person = null;
                 $accountTo = null;
                 $debitCredit = 'credito';
                 break;
 
             case 'pago_no_exitoso':
-                $amount = str_replace('.', '', $matches[2]).'.'.$matches[3];
-                $date = $matches[7];
-                $time = $matches[6];
-                $account = $matches[5];
+                $amount = $this->parseCurrencyAmount($matches[2]);
+                $date = $matches[5];
+                $time = $matches[4];
+                $account = $matches[3];
                 $merchant = trim($matches[1]);
                 $person = null;
                 $accountTo = null;
@@ -383,7 +383,7 @@ class GmailService
                 break;
 
             case 'paypal_recibido':
-                $amount = str_replace('.', '', $matches[1]);
+                $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $parsedEmailDate['date'];
                 $time = $parsedEmailDate['time'];
                 $account = null;
@@ -394,7 +394,7 @@ class GmailService
                 break;
 
             case 'paypal_recibido_snippet':
-                $amount = str_replace('.', '', $matches[1]);
+                $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $parsedEmailDate['date'];
                 $time = $parsedEmailDate['time'];
                 $account = null;
@@ -405,7 +405,7 @@ class GmailService
                 break;
 
             default:
-                $amount = '0';
+                $amount = 0.0;
                 $date = null;
                 $time = null;
                 $account = null;
@@ -437,7 +437,7 @@ class GmailService
 
         return [
             'type' => $mappedType,
-            'amount' => (float) $amount,
+            'amount' => $amount,
             'account' => $account,
             'account_to' => $accountTo,
             'merchant' => $merchant,
@@ -446,6 +446,36 @@ class GmailService
             'time' => $time,
             'debit_credit' => $normalizedDebitCredit,
         ];
+    }
+
+    private function parseCurrencyAmount(string $rawAmount): float
+    {
+        $cleanAmount = preg_replace('/[^\d.,]/', '', trim($rawAmount));
+        if (! $cleanAmount) {
+            return 0.0;
+        }
+
+        $lastComma = strrpos($cleanAmount, ',');
+        $lastDot = strrpos($cleanAmount, '.');
+        $lastSeparator = max($lastComma === false ? -1 : $lastComma, $lastDot === false ? -1 : $lastDot);
+
+        if ($lastSeparator >= 0) {
+            $decimals = substr($cleanAmount, $lastSeparator + 1);
+            $isDecimalSeparator = preg_match('/^\d{1,2}$/', $decimals) === 1;
+
+            if ($isDecimalSeparator) {
+                $wholePart = preg_replace('/[.,]/', '', substr($cleanAmount, 0, $lastSeparator));
+                if ($wholePart === '') {
+                    $wholePart = '0';
+                }
+
+                return (float) ($wholePart.'.'.$decimals);
+            }
+        }
+
+        $wholeAmount = preg_replace('/[.,]/', '', $cleanAmount);
+
+        return (float) ($wholeAmount ?: '0');
     }
 
     private function extractPaypalAccountFromRawBody(string $rawBody): ?string

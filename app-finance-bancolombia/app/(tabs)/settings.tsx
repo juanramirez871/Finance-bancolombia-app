@@ -129,7 +129,7 @@ export default function SettingsScreen() {
           activeOpacity={0.9}
         >
           <Octicons name="sync" size={18} color={Colors.black} />
-          <Text style={styles.syncButtonText}>Sincronizar correos</Text>
+          <Text style={styles.syncButtonText}>Sincronizar Movimientos</Text>
         </TouchableOpacity>
 
         {pickerTarget !== null && Platform.OS === "android" ? (

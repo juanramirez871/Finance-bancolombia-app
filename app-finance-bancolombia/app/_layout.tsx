@@ -4,9 +4,11 @@ import { StatusBar } from "expo-status-bar";
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as LocalAuthentication from "expo-local-authentication";
 import "react-native-reanimated";
 import { Colors } from "@/constants/theme";
 import type { AuthContextValue } from "@/interfaces/auth";
+import { Text, TouchableOpacity, View } from "react-native";
 
 type TransactionFilterContextValue = {
   startDate: string;
@@ -44,20 +46,87 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 export const TransactionFilterContext =
   createContext<TransactionFilterContextValue | null>(null);
 
+function BiometricLockScreen({
+  authenticating,
+  onUnlock,
+  onSignOut,
+}: {
+  authenticating: boolean;
+  onUnlock: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: Colors.black,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 24,
+        gap: 14,
+      }}
+    >
+      <Text style={{ color: Colors.white, fontSize: 26, fontWeight: "800" }}>
+        Desbloquea tu app
+      </Text>
+      <Text style={{ color: "#B6BBC2", fontSize: 14, textAlign: "center" }}>
+        Usa Face ID o huella para continuar.
+      </Text>
+
+      <TouchableOpacity
+        style={{
+          marginTop: 10,
+          borderRadius: 12,
+          backgroundColor: Colors.yellow,
+          paddingHorizontal: 18,
+          paddingVertical: 12,
+          minWidth: 190,
+          alignItems: "center",
+        }}
+        onPress={() => {
+          void onUnlock();
+        }}
+        disabled={authenticating}
+      >
+        <Text style={{ color: Colors.black, fontWeight: "800" }}>
+          {authenticating ? "Validando..." : "Desbloquear"}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={{
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: "#4A4E57",
+          paddingHorizontal: 18,
+          paddingVertical: 10,
+          minWidth: 190,
+          alignItems: "center",
+        }}
+        onPress={() => {
+          void onSignOut();
+        }}
+      >
+        <Text style={{ color: Colors.white, fontWeight: "700" }}>Cerrar sesión</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function AuthRedirect({ isAuthenticated }: { isAuthenticated: boolean }) {
 
   const pathname = usePathname();
   const isLoginRoute = pathname === "/login";
   if (!isAuthenticated && !isLoginRoute) return <Redirect href="/login" />;
-  if (isAuthenticated && isLoginRoute) return null;
+  if (isAuthenticated && isLoginRoute) return <Redirect href="/importing" />;
 
   return null;
 }
 
 export default function RootLayout() {
-  
-  const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isBiometricUnlocked, setIsBiometricUnlocked] = useState(false);
+  const [isAuthenticatingBiometric, setIsAuthenticatingBiometric] = useState(false);
   const [loading, setLoading] = useState(true);
   const defaultRange = useMemo(() => getCurrentYearRange(), []);
   const [transactionFilter, setTransactionFilter] = useState(defaultRange);
@@ -85,17 +154,46 @@ export default function RootLayout() {
     loadTransactionFilter();
   }, []);
 
+  const requestBiometricUnlock = useCallback(async () => {
+    try {
+      setIsAuthenticatingBiometric(true);
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!hasHardware || !isEnrolled) {
+        setIsBiometricUnlocked(true);
+        return;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Desbloquear Finance Bancolombia",
+        fallbackLabel: "Usar código",
+        cancelLabel: "Cancelar",
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        setIsBiometricUnlocked(true);
+      }
+    } catch (error) {
+      console.error("Error requesting biometric auth:", error);
+    } finally {
+      setIsAuthenticatingBiometric(false);
+    }
+  }, []);
+
   useEffect(() => {
     const checkToken = async () => {
       try {
-        if (pathname === "/login") {
-          await SecureStore.deleteItemAsync("authToken");
-          setIsAuthenticated(false);
-          return;
-        }
-
         const token = await SecureStore.getItemAsync("authToken");
-        if (token) setIsAuthenticated(true);
+        if (token) {
+          setIsAuthenticated(true);
+          setIsBiometricUnlocked(false);
+          await requestBiometricUnlock();
+        } else {
+          setIsAuthenticated(false);
+          setIsBiometricUnlocked(false);
+        }
       }
       catch (error) {
         console.error("Error checking auth token:", error);
@@ -106,12 +204,13 @@ export default function RootLayout() {
     };
 
     checkToken();
-  }, [pathname]);
+  }, [requestBiometricUnlock]);
 
   const signIn = useCallback(async (token: string) => {
     try {
       await SecureStore.setItemAsync("authToken", token);
       setIsAuthenticated(true);
+      setIsBiometricUnlocked(true);
     }
     catch (error) {
       console.error("Error saving auth token:", error);
@@ -122,6 +221,7 @@ export default function RootLayout() {
     try {
       await SecureStore.deleteItemAsync("authToken");
       setIsAuthenticated(false);
+      setIsBiometricUnlocked(false);
     }
     catch (error) {
       console.error("Error removing auth token:", error);
@@ -167,6 +267,8 @@ export default function RootLayout() {
     ],
   );
 
+  const showBiometricLock = isAuthenticated && !isBiometricUnlocked;
+
   if (loading) return null;
 
   return (
@@ -174,11 +276,19 @@ export default function RootLayout() {
       <AuthContext.Provider value={authValue}>
         <TransactionFilterContext.Provider value={transactionFilterValue}>
           <AuthRedirect isAuthenticated={isAuthenticated} />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="login" />
-            <Stack.Screen name="importing" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
+          {showBiometricLock ? (
+            <BiometricLockScreen
+              authenticating={isAuthenticatingBiometric}
+              onUnlock={requestBiometricUnlock}
+              onSignOut={signOut}
+            />
+          ) : (
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="login" />
+              <Stack.Screen name="importing" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          )}
         </TransactionFilterContext.Provider>
       </AuthContext.Provider>
       <StatusBar style="light" />

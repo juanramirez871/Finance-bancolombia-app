@@ -2,13 +2,21 @@ import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { useMemo, useState } from "react";
 import {
+  type NativeSyntheticEvent,
+  type NativeTouchEvent,
   Pressable,
   ScrollView,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
-import Svg, { Defs, LinearGradient, Path, Stop, Circle } from "react-native-svg";
+import Svg, {
+  Defs,
+  LinearGradient,
+  Path,
+  Stop,
+  Circle,
+} from "react-native-svg";
 
 export type AnnualChartPoint = {
   label: string;
@@ -33,6 +41,7 @@ export function AnnualLineChart({
   const { width } = useWindowDimensions();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
+  const [scrollOffsetX, setScrollOffsetX] = useState(0);
 
   const axisWidth = 52;
   const pointSpacing = 76;
@@ -61,12 +70,26 @@ export function AnnualLineChart({
     (selectedIndex !== null ? points[selectedIndex] : null) ??
     (points.length ? points[points.length - 1] : null);
 
+  const tooltipWidth = useMemo(() => {
+    if (!selectedPoint) {
+      return 132;
+    }
+
+    const valueText = formatValue(selectedPoint.value);
+    const longestText = Math.max(selectedPoint.label.length, valueText.length);
+
+    return Math.max(132, Math.min(220, 24 + longestText * 5));
+  }, [formatValue, selectedPoint]);
+
   const formatAxisLabel = (label: string) =>
     label.length > 12 ? `${label.slice(0, 11)}…` : label;
 
   const yTicks = useMemo(() => {
     const tickCount = Math.max(1, Math.round(maxValue / stepValue));
-    return Array.from({ length: tickCount + 1 }, (_, index) => index * stepValue).reverse();
+    return Array.from(
+      { length: tickCount + 1 },
+      (_, index) => index * stepValue,
+    ).reverse();
   }, [maxValue, stepValue]);
 
   const linePath = useMemo(() => {
@@ -86,17 +109,57 @@ export function AnnualLineChart({
 
   const tooltipLeft = useMemo(() => {
     if (!selectedPoint) return 0;
-    const raw = axisWidth + selectedPoint.x - 70;
-    return Math.max(axisWidth + 4, Math.min(raw, contentWidth - 144 - 8));
-  }, [contentWidth, selectedPoint]);
+    const raw = axisWidth + selectedPoint.x - tooltipWidth / 2;
+    return Math.max(
+      axisWidth + 4,
+      Math.min(raw, contentWidth - tooltipWidth - 8),
+    );
+  }, [contentWidth, selectedPoint, tooltipWidth]);
 
   const tooltipTop = useMemo(() => {
     if (!selectedPoint) return 0;
     return Math.max(8, selectedPoint.y - 72);
   }, [selectedPoint]);
 
+  const hideTooltip = () => {
+    setIsTooltipVisible(false);
+    setSelectedIndex(null);
+  };
+
+  const handleRootTouch = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
+    if (!isTooltipVisible) {
+      return;
+    }
+
+    const localX = event.nativeEvent.locationX;
+    const localY = event.nativeEvent.locationY;
+
+    const inChartViewportX = localX - axisWidth;
+    const contentX = scrollOffsetX + inChartViewportX;
+
+    const touchedPointIndex = points.findIndex((point) => {
+      const dx = contentX - point.x;
+      const dy = localY - point.y;
+      return dx * dx + dy * dy <= 26 * 26;
+    });
+
+    if (touchedPointIndex >= 0) {
+      setSelectedIndex(touchedPointIndex);
+      setIsTooltipVisible(true);
+      return;
+    }
+
+    if (touchedPointIndex < 0) {
+      hideTooltip();
+    }
+  };
+
   return (
-    <View style={{ width: "100%" }}>
+    <View
+      style={{ width: "100%" }}
+      onStartShouldSetResponderCapture={() => isTooltipVisible}
+      onResponderRelease={handleRootTouch}
+    >
       <View style={{ flexDirection: "row", height: chartHeight }}>
         <View
           style={{
@@ -120,8 +183,19 @@ export function AnnualLineChart({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ width: chartWidth }}
           style={{ flex: 1 }}
+          onScrollBeginDrag={hideTooltip}
+          scrollEventThrottle={16}
+          onScroll={(event) => {
+            setScrollOffsetX(event.nativeEvent.contentOffset.x);
+          }}
         >
-          <View style={{ width: chartWidth, height: chartHeight - 18, position: "relative" }}>
+          <View
+            style={{
+              width: chartWidth,
+              height: chartHeight - 18,
+              position: "relative",
+            }}
+          >
             <Svg width={chartWidth} height={chartHeight - 18}>
               <Defs>
                 <LinearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
@@ -131,7 +205,9 @@ export function AnnualLineChart({
               </Defs>
 
               {Array.from({ length: yTicks.length }).map((_, index) => {
-                const y = topPadding + (plotHeight / Math.max(1, yTicks.length - 1)) * index;
+                const y =
+                  topPadding +
+                  (plotHeight / Math.max(1, yTicks.length - 1)) * index;
                 return (
                   <Path
                     key={index}
@@ -144,15 +220,19 @@ export function AnnualLineChart({
                 );
               })}
 
-              {linePath ? (
-                <Path d={areaPath} fill="url(#areaFill)" />
-              ) : null}
+              {linePath ? <Path d={areaPath} fill="url(#areaFill)" /> : null}
               {linePath ? (
                 <Path d={linePath} stroke={color} strokeWidth={3} fill="none" />
               ) : null}
 
               {points.map((point, index) => (
-                <Circle key={point.label} cx={point.x} cy={point.y} r={4} fill={color} />
+                <Circle
+                  key={point.label}
+                  cx={point.x}
+                  cy={point.y}
+                  r={4}
+                  fill={color}
+                />
               ))}
             </Svg>
 
@@ -201,14 +281,13 @@ export function AnnualLineChart({
                 style={[
                   styles.tooltip,
                   {
+                    width: tooltipWidth,
                     left: tooltipLeft,
                     top: tooltipTop,
                   },
                 ]}
               >
-                <Text style={styles.tooltipTitle}>
-                  {selectedPoint.label}
-                </Text>
+                <Text style={styles.tooltipTitle}>{selectedPoint.label}</Text>
                 <Text style={styles.tooltipValue}>
                   {formatValue(selectedPoint.value)}
                 </Text>
@@ -224,24 +303,23 @@ export function AnnualLineChart({
 const styles = {
   tooltip: {
     position: "absolute" as const,
-    width: 144,
-    minHeight: 64,
+    minHeight: 60,
     justifyContent: "center" as const,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
     backgroundColor: BCO.card,
     borderWidth: 1,
-    borderColor: BCO.border,
+    borderColor: "rgba(94, 205, 233, 0.35)",
   },
   tooltipTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "600" as const,
     color: Colors.white,
     flexShrink: 1,
   },
   tooltipValue: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "800" as const,
     color: Colors.white,
     marginTop: 2,

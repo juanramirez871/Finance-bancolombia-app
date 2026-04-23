@@ -31,6 +31,21 @@ type AnnualLineChartProps = {
   formatValue: (value: number) => string;
 };
 
+const MONTH_LABELS_FULL: Record<string, string> = {
+  Ene: "Enero",
+  Feb: "Febrero",
+  Mar: "Marzo",
+  Abr: "Abril",
+  May: "Mayo",
+  Jun: "Junio",
+  Jul: "Julio",
+  Ago: "Agosto",
+  Sep: "Septiembre",
+  Oct: "Octubre",
+  Nov: "Noviembre",
+  Dic: "Diciembre",
+};
+
 export function AnnualLineChart({
   data,
   color,
@@ -79,7 +94,7 @@ export function AnnualLineChart({
     const valueText = formatValue(selectedPoint.value);
     const longestText = Math.max(selectedPoint.label.length, valueText.length);
 
-    return Math.max(132, Math.min(220, 24 + longestText * 5));
+    return Math.max(100, Math.min(220, 24 + longestText * 5));
   }, [formatValue, selectedPoint]);
 
   const formatAxisLabel = (label: string) =>
@@ -288,7 +303,9 @@ export function AnnualLineChart({
                   },
                 ]}
               >
-                <Text style={styles.tooltipTitle}>{selectedPoint.label}</Text>
+                <Text style={styles.tooltipTitle}>
+                  {MONTH_LABELS_FULL[selectedPoint.label] ?? selectedPoint.label}
+                </Text>
                 <Text style={styles.tooltipValue}>
                   {formatValue(selectedPoint.value)}
                 </Text>

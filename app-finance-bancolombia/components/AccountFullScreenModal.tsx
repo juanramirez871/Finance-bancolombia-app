@@ -1,55 +1,25 @@
 import { Colors } from "@/constants/theme";
+import type {
+  AccountFullScreenModalProps,
+  AccountModalStyles,
+} from "@/interfaces/components/income";
 import { groupTransactionsByDate, toDate } from "@/utils/income";
 import Octicons from "@expo/vector-icons/Octicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { useMemo, useState } from "react";
 import {
-  type ImageStyle,
   Modal,
   Platform,
   Pressable,
   SectionList,
-  type StyleProp,
   Text,
-  type TextStyle,
   TouchableOpacity,
   View,
-  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { Account, Transaction } from "../../interfaces/income";
-import { styles as incomeStyles } from "../../styles/income";
+import { styles as incomeStyles } from "../styles/income";
 import { TransactionRow } from "./TransactionRow";
-
-type AccountModalStyles = {
-  modalSafe: StyleProp<ViewStyle>;
-  modalHeader: StyleProp<ViewStyle>;
-  modalTitle: StyleProp<TextStyle>;
-  filterRow: StyleProp<ViewStyle>;
-  filterChipsGroup: StyleProp<ViewStyle>;
-  filterChip: StyleProp<ViewStyle>;
-  filterChipEqual: StyleProp<ViewStyle>;
-  filterChipActive: StyleProp<ViewStyle>;
-  filterChipText: StyleProp<TextStyle>;
-  filterChipTextActive: StyleProp<TextStyle>;
-  filterSep: StyleProp<TextStyle>;
-  clearBtn: StyleProp<ViewStyle>;
-  clearBtnHidden: StyleProp<ViewStyle>;
-  clearText: StyleProp<TextStyle>;
-  pickerOverlay: StyleProp<ViewStyle>;
-  pickerSheet: StyleProp<ViewStyle>;
-  pickerSheetHeader: StyleProp<ViewStyle>;
-  pickerSheetCancel: StyleProp<TextStyle>;
-  pickerSheetTitle: StyleProp<TextStyle>;
-  pickerSheetAction: StyleProp<TextStyle>;
-  emptyState: StyleProp<ViewStyle>;
-  emptyText: StyleProp<TextStyle>;
-  modalList: StyleProp<ViewStyle>;
-  dateHeader: StyleProp<TextStyle>;
-  transactionList: StyleProp<ViewStyle>;
-  failedImage: StyleProp<ImageStyle>;
-};
 
 export function AccountFullScreenModal({
   visible,
@@ -57,21 +27,15 @@ export function AccountFullScreenModal({
   onClose,
   styles,
   getTxAmountColor,
-}: {
-  visible: boolean;
-  account: Account;
-  onClose: () => void;
-  styles?: AccountModalStyles & Record<string, unknown>;
-  getTxAmountColor?: (tx: Transaction) => string | undefined;
-}) {
+}: AccountFullScreenModalProps) {
+
   const s = (styles ?? incomeStyles) as AccountModalStyles;
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [picker, setPicker] = useState<"from" | "to" | null>(null);
-
   const handleSelectDate = (selected: Date | null) => {
-    if (!selected) return;
 
+    if (!selected) return;
     if (picker === "from") {
       setStartDate(selected);
       if (endDate && selected > endDate) setEndDate(selected);

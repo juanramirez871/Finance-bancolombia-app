@@ -1,5 +1,6 @@
 import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
+import type { AnnualLineChartProps } from "@/interfaces/components/chart";
 import { useMemo, useState } from "react";
 import {
   type NativeSyntheticEvent,
@@ -17,19 +18,6 @@ import Svg, {
   Stop,
   Circle,
 } from "react-native-svg";
-
-export type AnnualChartPoint = {
-  label: string;
-  value: number;
-};
-
-type AnnualLineChartProps = {
-  data: AnnualChartPoint[];
-  color: string;
-  maxValue: number;
-  stepValue: number;
-  formatValue: (value: number) => string;
-};
 
 const MONTH_LABELS_FULL: Record<string, string> = {
   Ene: "Enero",
@@ -53,11 +41,11 @@ export function AnnualLineChart({
   stepValue,
   formatValue,
 }: AnnualLineChartProps) {
+
   const { width } = useWindowDimensions();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
   const [scrollOffsetX, setScrollOffsetX] = useState(0);
-
   const axisWidth = 52;
   const pointSpacing = 76;
   const chartWidth = Math.max(width - 72, data.length * pointSpacing);
@@ -149,7 +137,6 @@ export function AnnualLineChart({
 
     const localX = event.nativeEvent.locationX;
     const localY = event.nativeEvent.locationY;
-
     const inChartViewportX = localX - axisWidth;
     const contentX = scrollOffsetX + inChartViewportX;
 
@@ -165,9 +152,7 @@ export function AnnualLineChart({
       return;
     }
 
-    if (touchedPointIndex < 0) {
-      hideTooltip();
-    }
+    if (touchedPointIndex < 0) hideTooltip();
   };
 
   return (

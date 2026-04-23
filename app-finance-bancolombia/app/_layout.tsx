@@ -5,6 +5,7 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import * as SecureStore from "expo-secure-store";
 import "react-native-reanimated";
 import { Colors } from "@/constants/theme";
+import type { AuthContextValue } from "@/interfaces/auth";
 
 const BancolombiaTheme = {
   ...DefaultTheme,
@@ -20,16 +21,12 @@ const BancolombiaTheme = {
   },
 };
 
-export const AuthContext = createContext<{
-  isAuthenticated: boolean;
-  signIn: (token: string) => Promise<void>;
-  signOut: () => Promise<void>;
-} | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 function AuthRedirect({ isAuthenticated }: { isAuthenticated: boolean }) {
+
   const pathname = usePathname();
   const isLoginRoute = pathname === "/login";
-
   if (!isAuthenticated && !isLoginRoute) return <Redirect href="/login" />;
   if (isAuthenticated && isLoginRoute) return null;
 
@@ -37,6 +34,7 @@ function AuthRedirect({ isAuthenticated }: { isAuthenticated: boolean }) {
 }
 
 export default function RootLayout() {
+  
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);

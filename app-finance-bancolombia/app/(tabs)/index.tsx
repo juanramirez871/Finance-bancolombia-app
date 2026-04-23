@@ -1,158 +1,49 @@
-import { AccountCard } from "@/components/income/AccountCard";
-import { AccountSkeleton } from "@/components/income/AccountSkeleton";
+import { AccountCard } from "@/components/AccountCard";
+import { AccountSkeleton } from "@/components/AccountSkeleton";
 import { AnnualLineChart } from "@/components/AnnualLineChart";
 import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/income";
 import { useTransactions } from "@/hooks/useTransactions";
+import {
+  buildAnnualSeriesFromAccounts,
+  buildScale,
+  buildTopCategoriesFromAccounts,
+  formatCompactCOP,
+  formatCOP,
+} from "@/utils/financeMetrics";
+import { confirmSignOut } from "@/utils/session";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Image } from "expo-image";
-import { useCallback, useContext, useMemo } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useContext, useMemo } from "react";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
 import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 import { SkeletonLine } from "@/components/SkeletonLine";
-import { toDate } from "@/utils/income";
 
 export default function IncomeScreen() {
+
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
   const { incomeAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
-
-  const incomeAnnual = useMemo(() => {
-    const monthlyTotals: Record<string, number> = {};
-    let latestTs: number | null = null;
-    incomeAccounts.forEach((account) => {
-      account.transactions.forEach((tx) => {
-        if (!tx.date) return;
-        const clean = tx.amount.replace(/[^0-9]/g, "");
-        const numeric = parseInt(clean, 10);
-        if (isNaN(numeric)) return;
-        const date = toDate(tx.date);
-        const ts = date.getTime();
-        if (Number.isNaN(ts)) return;
-        if (latestTs === null || ts > latestTs) latestTs = ts;
-        const month = date.getMonth();
-        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
-        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
-      });
-    });
-
-    const months = [
-      "Ene",
-      "Feb",
-      "Mar",
-      "Abr",
-      "May",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dic",
-    ];
-    const chartYear =
-      latestTs !== null
-        ? new Date(latestTs).getFullYear()
-        : new Date().getFullYear();
-    let yearTotal = 0;
-    const data = months.map((label, i) => {
-      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
-      const value = monthlyTotals[key] ?? 0;
-      yearTotal += value;
-      return {
-        label,
-        value,
-        frontColor: Colors.purple,
-      };
-    });
-
-    return { chartYear, data, yearTotal };
-  }, [incomeAccounts]);
+  const incomeAnnual = useMemo(
+    () => buildAnnualSeriesFromAccounts(incomeAccounts),
+    [incomeAccounts],
+  );
 
   const incomeChartData = incomeAnnual.data;
   const totalIncome = incomeAnnual.yearTotal;
-
   const commerceAnnual = useMemo(() => {
-    const totals: Record<string, number> = {};
-
-    incomeAccounts.forEach((account) => {
-      account.transactions.forEach((tx) => {
-        const clean = tx.amount.replace(/[^0-9]/g, "");
-        const numeric = parseInt(clean, 10);
-        if (isNaN(numeric)) return;
-
-        const key = tx.merchant?.trim() || tx.person?.trim() || tx.account_to?.trim() || tx.label;
-        totals[key] = (totals[key] ?? 0) + numeric;
-      });
-    });
-
-    const data = Object.entries(totals)
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 12);
-
-    const noOfSections = 4;
-    const max = Math.max(...data.map((d) => d.value), 1);
-    const stepValue = getScaleStep(Math.ceil(max / noOfSections));
-
+    const categories = buildTopCategoriesFromAccounts(incomeAccounts);
     return {
-      data,
-      total: data[0]?.value ?? 0,
-      scale: { maxValue: stepValue * noOfSections, noOfSections, stepValue },
+      ...categories,
+      scale: buildScale(categories.data.map((point) => point.value)),
     };
   }, [incomeAccounts]);
 
-  const handleSignOut = useCallback(() => {
-    Alert.alert(
-      "Cerrar sesión",
-      "¿Estás seguro de que quieres cerrar sesión?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Cerrar sesión",
-          style: "destructive",
-          onPress: () => auth?.signOut(),
-        },
-      ],
-    );
-  }, [auth]);
-
-  const formatCOP = useCallback(
-    (value: number) =>
-      new Intl.NumberFormat("es-CO", {
-        style: "currency",
-        currency: "COP",
-        maximumFractionDigits: 0,
-      }).format(value),
-    [],
-  );
-
-  const formatCompactCOP = (value: number) => {
-    const abs = Math.abs(value);
-    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-    if (abs >= 1_000) return `$${Math.round(value / 1_000)}k`;
-    return `$${value}`;
-  };
-
-  function getScaleStep(stepRaw: number) {
-    const candidates = [
-      50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000, 5_000_000,
-      10_000_000,
-    ];
-    return (
-      candidates.find((c) => c >= stepRaw) ??
-      Math.ceil(stepRaw / 10_000_000) * 10_000_000
-    );
-  }
-
   const incomeScale = useMemo(() => {
-    const noOfSections = 4;
-    const max = Math.max(...incomeChartData.map((d) => d.value), 1);
-    const stepValue = getScaleStep(Math.ceil(max / noOfSections));
-    return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
+    return buildScale(incomeChartData.map((point) => point.value));
   }, [incomeChartData]);
 
   return (
@@ -181,7 +72,7 @@ export default function IncomeScreen() {
                 </Text>
               )}
               <View style={{ flexDirection: "row", gap: 16 }}>
-                <TouchableOpacity onPress={handleSignOut}>
+                <TouchableOpacity onPress={() => confirmSignOut(auth)}>
                   <Octicons name="sign-out" size={22} color={BCO.muted} />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -239,7 +130,7 @@ export default function IncomeScreen() {
             <View style={styles.chartSummaryRow}>
               <Text style={styles.chartSummaryLabel}>Top categoría</Text>
               <Text style={styles.chartSummaryValue}>
-                {commerceAnnual.data[0] ? formatCOP(commerceAnnual.total) : "—"}
+                {commerceAnnual.data[0] ? formatCOP(commerceAnnual.topValue) : "—"}
               </Text>
             </View>
             <AnnualLineChart

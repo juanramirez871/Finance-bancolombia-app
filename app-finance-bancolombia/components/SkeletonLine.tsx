@@ -1,4 +1,4 @@
-import { StyleProp, ViewStyle } from "react-native";
+import type { SkeletonLineProps } from "@/interfaces/components/skeleton";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,14 +7,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-import { View, StyleSheet } from "react-native";
-
-type SkeletonLineProps = {
-  width?: number;
-  height?: number;
-  borderRadius?: number;
-  style?: StyleProp<ViewStyle>;
-};
+import { StyleSheet } from "react-native";
 
 export function SkeletonLine({
   width = 160,
@@ -22,8 +15,8 @@ export function SkeletonLine({
   borderRadius = 4,
   style,
 }: SkeletonLineProps) {
-  const opacity = useSharedValue(0.3);
 
+  const opacity = useSharedValue(0.3);
   useEffect(() => {
     opacity.value = withRepeat(
       withTiming(0.7, { duration: 800, easing: Easing.inOut(Easing.ease) }),

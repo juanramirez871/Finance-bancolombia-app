@@ -1,200 +1,58 @@
-import { AccountCard } from "@/components/income/AccountCard";
-import { AccountSkeleton } from "@/components/income/AccountSkeleton";
+import { AccountCard } from "@/components/AccountCard";
+import { AccountSkeleton } from "@/components/AccountSkeleton";
 import { AnnualLineChart } from "@/components/AnnualLineChart";
 import { BCO } from "@/constants/expense";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/expense";
 import { useTransactions } from "@/hooks/useTransactions";
+import {
+  buildAnnualSeriesFromAccounts,
+  buildAnnualSeriesFromTransactions,
+  buildScale,
+  buildTopCategoriesFromAccounts,
+  buildTopCategoriesFromTransactions,
+  formatCompactCOP,
+  formatCOP,
+} from "@/utils/financeMetrics";
+import { confirmSignOut } from "@/utils/session";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
 import { useBalanceVisible } from "@/hooks/useBalanceVisible";
 import { SkeletonLine } from "@/components/SkeletonLine";
 import type { Transaction } from "@/interfaces/income";
-import { toDate } from "@/utils/income";
-
-const STEP_CANDIDATES = [
-  50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000, 5_000_000,
-  10_000_000,
-];
-
-function niceStep(stepRaw: number) {
-  return (
-    STEP_CANDIDATES.find((c) => c >= stepRaw) ??
-    Math.ceil(stepRaw / 10_000_000) * 10_000_000
-  );
-}
 
 function isFailedPayment(label: string) {
   return /fallid|rechaz|declinad|no\s*proces|error/i.test(label);
 }
 
-function buildAnnualSeries(transactions: Transaction[]) {
-  const monthlyTotals: Record<string, number> = {};
-  let latestTs: number | null = null;
-
-  transactions.forEach((tx) => {
-    if (!tx.date) return;
-    const clean = tx.amount.replace(/[^0-9]/g, "");
-    const numeric = parseInt(clean, 10);
-    if (isNaN(numeric)) return;
-
-    const date = toDate(tx.date);
-    const ts = date.getTime();
-    if (Number.isNaN(ts)) return;
-    if (latestTs === null || ts > latestTs) latestTs = ts;
-
-    const month = date.getMonth();
-    const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
-    monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
-  });
-
-  const months = [
-    "Ene",
-    "Feb",
-    "Mar",
-    "Abr",
-    "May",
-    "Jun",
-    "Jul",
-    "Ago",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dic",
-  ];
-
-  const chartYear =
-    latestTs !== null ? new Date(latestTs).getFullYear() : new Date().getFullYear();
-
-  let yearTotal = 0;
-  let cumulative = 0;
-
-  const monthlyData = months.map((label, i) => {
-    const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
-    const value = monthlyTotals[key] ?? 0;
-    yearTotal += value;
-    cumulative += value;
-    return { label, value };
-  });
-
-  return { chartYear, monthlyData, yearTotal };
-}
-
 export default function ExpenseScreen() {
+
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
   const { expenseAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
-
-  const expenseAnnual = useMemo(() => {
-    const monthlyTotals: Record<string, number> = {};
-    let latestTs: number | null = null;
-    expenseAccounts.forEach((account) => {
-      account.transactions.forEach((tx) => {
-        if (!tx.date) return;
-        const clean = tx.amount.replace(/[^0-9]/g, "");
-        const numeric = parseInt(clean, 10);
-        if (isNaN(numeric)) return;
-        const date = toDate(tx.date);
-        const ts = date.getTime();
-        if (Number.isNaN(ts)) return;
-        if (latestTs === null || ts > latestTs) latestTs = ts;
-        const month = date.getMonth();
-        const key = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}`;
-        monthlyTotals[key] = (monthlyTotals[key] ?? 0) + numeric;
-      });
-    });
-
-    const months = [
-      "Ene",
-      "Feb",
-      "Mar",
-      "Abr",
-      "May",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dic",
-    ];
-    const chartYear =
-      latestTs !== null
-        ? new Date(latestTs).getFullYear()
-        : new Date().getFullYear();
-    let yearTotal = 0;
-    const data = months.map((label, i) => {
-      const key = `${chartYear}-${String(i + 1).padStart(2, "0")}`;
-      const value = monthlyTotals[key] ?? 0;
-      yearTotal += value;
-      return {
-        label,
-        value,
-        frontColor: Colors.red,
-      };
-    });
-
-    return { chartYear, data, yearTotal };
-  }, [expenseAccounts]);
+  const expenseAnnual = useMemo(
+    () => buildAnnualSeriesFromAccounts(expenseAccounts),
+    [expenseAccounts],
+  );
 
   const expenseChartData = expenseAnnual.data;
   const totalExpense = expenseAnnual.yearTotal;
-
   const expenseScale = useMemo(() => {
-    const noOfSections = 4;
-    const max = Math.max(...expenseChartData.map((d) => d.value), 1);
-    const stepValue = niceStep(Math.ceil(max / noOfSections));
-    return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
+    return buildScale(expenseChartData.map((point) => point.value));
   }, [expenseChartData]);
 
   const expenseCategoryAnnual = useMemo(() => {
-    const totals: Record<string, number> = {};
-
-    expenseAccounts.forEach((account) => {
-      account.transactions.forEach((tx) => {
-        const clean = tx.amount.replace(/[^0-9]/g, "");
-        const numeric = parseInt(clean, 10);
-        if (isNaN(numeric)) return;
-
-        const key = tx.merchant?.trim() || tx.person?.trim() || tx.account_to?.trim() || tx.label;
-        totals[key] = (totals[key] ?? 0) + numeric;
-      });
-    });
-
-    const data = Object.entries(totals)
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 12);
-
-    const noOfSections = 4;
-    const max = Math.max(...data.map((d) => d.value), 1);
-    const stepValue = niceStep(Math.ceil(max / noOfSections));
-
+    const categories = buildTopCategoriesFromAccounts(expenseAccounts);
     return {
-      data,
-      topValue: data[0]?.value ?? 0,
-      scale: { maxValue: stepValue * noOfSections, noOfSections, stepValue },
+      ...categories,
+      scale: buildScale(categories.data.map((point) => point.value)),
     };
   }, [expenseAccounts]);
 
-  const handleSignOut = useCallback(() => {
-    Alert.alert(
-      "Cerrar sesión",
-      "¿Estás seguro de que quieres cerrar sesión?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Cerrar sesión",
-          style: "destructive",
-          onPress: () => auth?.signOut(),
-        },
-      ],
-    );
-  }, [auth]);
   const [accountChartsVisible, setAccountChartsVisible] = useState(false);
   const [accountSelectedId, setAccountSelectedId] = useState<string | null>(
     null,
@@ -206,60 +64,19 @@ export default function ExpenseScreen() {
   );
 
   const accountAnnual = useMemo(() => {
+
     if (!accountSelected) return null;
-
-    const annual = buildAnnualSeries(accountSelected.transactions);
-
-    const categoryTotals = accountSelected.transactions.reduce(
-      (acc, tx) => {
-        const clean = tx.amount.replace(/[^0-9]/g, "");
-        const numeric = parseInt(clean, 10);
-        if (isNaN(numeric)) return acc;
-
-        const key = tx.merchant?.trim() || tx.person?.trim() || tx.account_to?.trim() || tx.label;
-        acc[key] = (acc[key] ?? 0) + numeric;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-
-    const categoryData = Object.entries(categoryTotals)
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 12);
-
-    const buildScale = (values: number[]) => {
-      const noOfSections = 4;
-      const max = Math.max(...values, 1);
-      const stepValue = niceStep(Math.ceil(max / noOfSections));
-      return { maxValue: stepValue * noOfSections, noOfSections, stepValue };
-    };
+    const annual = buildAnnualSeriesFromTransactions(accountSelected.transactions);
+    const categories = buildTopCategoriesFromTransactions(accountSelected.transactions);
 
     return {
-      expenseData: annual.monthlyData,
-      categoryData,
+      expenseData: annual.data,
+      categoryData: categories.data,
       yearTotal: annual.yearTotal,
-      expenseScale: buildScale(annual.monthlyData.map((d) => d.value)),
-      categoryScale: buildScale(categoryData.map((d) => d.value)),
+      expenseScale: buildScale(annual.data.map((point) => point.value)),
+      categoryScale: buildScale(categories.data.map((point) => point.value)),
     };
   }, [accountSelected]);
-
-  const formatCOP = useCallback(
-    (value: number) =>
-      new Intl.NumberFormat("es-CO", {
-        style: "currency",
-        currency: "COP",
-        maximumFractionDigits: 0,
-      }).format(value),
-    [],
-  );
-
-  const formatCompactCOP = (value: number) => {
-    const abs = Math.abs(value);
-    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-    if (abs >= 1_000) return `$${Math.round(value / 1_000)}k`;
-    return `$${value}`;
-  };
 
   const getTxAmountColor = useCallback((tx: Transaction) => {
     return isFailedPayment(tx.label) ? Colors.blue : undefined;
@@ -294,7 +111,7 @@ export default function ExpenseScreen() {
                 </Text>
               )}
               <View style={{ flexDirection: "row", gap: 16 }}>
-                <TouchableOpacity onPress={handleSignOut}>
+                <TouchableOpacity onPress={() => confirmSignOut(auth)}>
                   <Octicons name="sign-out" size={22} color={BCO.muted} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setBalanceVisible(!balanceVisible)}>

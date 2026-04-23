@@ -1,31 +1,14 @@
 import { formatTxDate } from "@/utils/income";
-import type { StyleProp, TextStyle, ViewStyle } from "react-native";
+import type { TransactionRowProps, TransactionRowStyles } from "@/interfaces/components/income";
 import { Text, View } from "react-native";
-import type { Transaction } from "../../interfaces/income";
-import { styles as incomeStyles } from "../../styles/income";
-
-type TransactionRowStyles = {
-  transactionItem: StyleProp<ViewStyle>;
-  transactionItemLast: StyleProp<ViewStyle>;
-  transactionMain: StyleProp<ViewStyle>;
-  transactionLabel: StyleProp<TextStyle>;
-  transactionMetaRow: StyleProp<ViewStyle>;
-  transactionMetaText: StyleProp<TextStyle>;
-  transactionRight: StyleProp<ViewStyle>;
-  transactionAmount: StyleProp<TextStyle>;
-};
+import { styles as incomeStyles } from "../styles/income";
 
 export function TransactionRow({
   tx,
   isLast,
   styles,
   amountColor,
-}: {
-  tx: Transaction;
-  isLast: boolean;
-  styles?: TransactionRowStyles;
-  amountColor?: string;
-}) {
+}: TransactionRowProps) {
   const s = (styles ?? incomeStyles) as unknown as TransactionRowStyles;
   return (
     <View style={[s.transactionItem, isLast && s.transactionItemLast]}>

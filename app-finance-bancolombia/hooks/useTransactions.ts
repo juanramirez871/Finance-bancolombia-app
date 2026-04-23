@@ -1,23 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import type { UiTransaction } from "@/interfaces/transactions";
 import { api, type Transaction as ApiTransaction } from "@/utils/api";
-
-export interface UiTransaction {
-  id: string;
-  label: string;
-  amount: string;
-  date: string;
-  time: string;
-  type?: string;
-  merchant?: string | null;
-  person?: string | null;
-  account_to?: string | null;
-}
-
-export interface UiAccount {
-  id: string;
-  label: string;
-  transactions: UiTransaction[];
-}
 
 function formatDate(dateStr: string | null): string {
 
@@ -70,23 +53,31 @@ function formatLabel(t: ApiTransaction): string {
   switch (t.type) {
     case "recibido_qr":
       return `Transferencia de ${t.person}`;
+
     case "compra":
       return `Compra ${t.merchant}`;
+
     case "pago_no_exitoso":
       return `Pago fallido ${t.merchant}`;
+
     case "retiro":
       return "Retiro cajero";
+
     case "transferencia":
       return `Transferencia a ${t.account_to}`;
+
     case "paypal_recibido":
       return t.account_to ? `PayPal *${t.account_to}` : "PayPal";
+
     case "avance":
       return `Avance ${t.merchant}`;
+
     default:
       if (t.type === "compra" || t.type === "avance" || t.type === "pago_no_exitoso") {
         const cardType = debitCredit === "credito" ? "T.Cred" : "T.Deb";
         return `${cardType} *${accountNum}`;
       }
+      
       return t.merchant ?? t.type;
   }
 }

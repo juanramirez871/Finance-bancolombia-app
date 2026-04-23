@@ -1,10 +1,9 @@
-import { BCO } from "@/constants/income";
-import { Colors } from "@/constants/theme";
+import { importingStyles as styles } from "@/styles/importing";
 import { api } from "@/utils/api";
 import { useRouter } from "expo-router";
 import { AuthContext } from "./_layout";
 import { useContext, useEffect, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 
@@ -47,22 +46,15 @@ export default function ImportingScreen() {
     let mounted = true;
 
     const timer = setInterval(() => {
-      if (!mounted) {
-        return;
-      }
 
+      if (!mounted) return;
       setProgress((current) => {
-        if (hasServerProgressRef.current) {
-          return current;
-        }
 
-        if (current >= 92) {
-          return current;
-        }
+        if (hasServerProgressRef.current) return current;        
+        if (current >= 92) return current;
 
         const elapsed = (Date.now() - startedAt.current) / 1000;
         const boost = elapsed > 8 ? 2 : 1;
-
         return Math.min(current + boost, 92);
       });
     }, 350);
@@ -73,19 +65,15 @@ export default function ImportingScreen() {
         setPhase("importing");
 
         const response = await api.importEmailsStream(currentYear, (serverProgress) => {
-          if (!mounted) {
-            return;
-          }
 
+          if (!mounted) return;
           hasServerProgressRef.current = true;
           setProcessed(serverProgress.processed);
           setTotal(serverProgress.total);
           setProgress((current) => Math.max(current, Math.min(serverProgress.percent, 99)));
         });
-        if (!mounted) {
-          return;
-        }
 
+        if (!mounted) return;
         setResult(response);
         setPhase("finalizing");
         setProgress(100);
@@ -97,10 +85,8 @@ export default function ImportingScreen() {
         }, 450);
       }
       catch {
-        if (!mounted) {
-          return;
-        }
 
+        if (!mounted) return;
         setError("No pudimos importar ahora. Entraremos y cargaremos movimientos.");
         setProgress(100);
 
@@ -141,6 +127,17 @@ export default function ImportingScreen() {
         </View>
 
         <Text style={styles.percent}>{progress}%</Text>
+        {result ? (
+          <Text style={styles.meta}>
+            Guardados: {result.saved} | Omitidos: {result.skipped}
+          </Text>
+        ) : total > 0 ? (
+          <Text style={styles.meta}>
+            Procesados: {processed} de {total}
+          </Text>
+        ) : (
+          <Text style={styles.meta}>Esto puede tardar unos segundos...</Text>
+        )}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Image
           style={styles.hero}
@@ -150,66 +147,3 @@ export default function ImportingScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: BCO.bg,
-  },
-  hero: {
-    width: 220,
-    height: 220,
-    marginBottom: 6,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: BCO.text,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: BCO.muted,
-    marginTop: 10,
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  track: {
-    width: "100%",
-    maxWidth: 360,
-    height: 12,
-    backgroundColor: "#232325",
-    borderRadius: 999,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: BCO.divider,
-  },
-  bar: {
-    height: "100%",
-    backgroundColor: Colors.yellow,
-  },
-  percent: {
-    marginTop: 10,
-    fontSize: 13,
-    color: Colors.white,
-    fontWeight: "700",
-  },
-  meta: {
-    marginTop: 16,
-    fontSize: 13,
-    color: BCO.muted,
-    textAlign: "center",
-  },
-  error: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#F59E0B",
-    textAlign: "center",
-  },
-});

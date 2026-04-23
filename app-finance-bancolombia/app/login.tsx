@@ -1,5 +1,5 @@
-import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
+import { loginStyles as styles } from "@/styles/login";
 import { api } from "@/utils/api";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
@@ -8,7 +8,7 @@ import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useCallback, useContext, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "./_layout";
 
@@ -26,10 +26,10 @@ const discovery = {
 };
 
 export default function LoginScreen() {
+
   const auth = useContext(AuthContext);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-
   const handleGoogleSignIn = useCallback(async () => {
     setLoading(true);
     try {
@@ -134,62 +134,3 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: BCO.bg,
-  },
-  banner: {
-    width: "300%",
-    height: 150,
-    transform: [{ translateY: 50 }, { translateX: 65 }],
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  hero: {
-    width: 220,
-    height: 220,
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: BCO.text,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 13,
-    color: BCO.muted,
-    textAlign: "center",
-    maxWidth: 280,
-  },
-  googleButton: {
-    marginTop: 10,
-    borderRadius: 12,
-    backgroundColor: Colors.purple,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-  },
-  googleIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  googleButtonText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: Colors.white,
-  },
-});

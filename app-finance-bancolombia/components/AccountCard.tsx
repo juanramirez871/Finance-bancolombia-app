@@ -1,35 +1,20 @@
 import { useState } from "react";
-import type { StyleProp, TextStyle, ViewStyle } from "react-native";
+import type { AccountCardProps, AccountCardStyles } from "@/interfaces/components/income";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import type { Account, Transaction } from "../../interfaces/income";
-import { styles as incomeStyles } from "../../styles/income";
+import { styles as incomeStyles } from "../styles/income";
 import { AccountFullScreenModal } from "./AccountFullScreenModal";
 import { TransactionRow } from "./TransactionRow";
-
-type AccountCardStyles = {
-  section: StyleProp<ViewStyle>;
-  sectionHeader: StyleProp<ViewStyle>;
-  sectionTitle: StyleProp<TextStyle>;
-  seeAll: StyleProp<TextStyle>;
-  transactionList: StyleProp<ViewStyle>;
-  transactionScroll: StyleProp<ViewStyle>;
-};
 
 export function AccountCard({
   account,
   styles,
   onPressAccount,
   getTxAmountColor,
-}: {
-  account: Account;
-  styles?: AccountCardStyles & Record<string, unknown>;
-  onPressAccount?: () => void;
-  getTxAmountColor?: (tx: Transaction) => string | undefined;
-}) {
+}: AccountCardProps) {
+
   const [expanded, setExpanded] = useState(false);
   const preview = account.transactions;
   const s = (styles ?? incomeStyles) as AccountCardStyles;
-
   return (
     <View style={s.section}>
       <View style={s.sectionHeader}>

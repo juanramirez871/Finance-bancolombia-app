@@ -279,7 +279,7 @@ export function AccountFullScreenModal({
             sections={sections}
             keyExtractor={(tx) => tx.id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={s.modalList}
+            contentContainerStyle={[s.modalList, { paddingHorizontal: 20 }]}
             renderSectionHeader={({ section }) => (
               <Text style={s.dateHeader}>{section.title}</Text>
             )}

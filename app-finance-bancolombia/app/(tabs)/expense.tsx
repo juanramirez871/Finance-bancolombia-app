@@ -1,6 +1,7 @@
 import { AccountCard } from "@/components/AccountCard";
 import { AccountSkeleton } from "@/components/AccountSkeleton";
 import { AnnualLineChart } from "@/components/AnnualLineChart";
+import { ManualTransactionModal } from "@/components/ManualTransactionModal";
 import { BCO } from "@/constants/expense";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/expense";
@@ -37,7 +38,8 @@ export default function ExpenseScreen() {
 
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { expenseAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
+  const { expenseAccounts, loading, addManualTransaction } = useTransactions(Boolean(auth?.isAuthenticated));
+  const [manualModalVisible, setManualModalVisible] = useState(false);
   const expenseAccountsForMetrics = useMemo(
     () => expenseAccounts.map((account) => ({
       ...account,
@@ -101,6 +103,15 @@ export default function ExpenseScreen() {
     setAccountChartsVisible(true);
   }, []);
 
+  const handleSaveManualExpense = useCallback(async (data: { amount: number; concept: string; account: string }) => {
+    await addManualTransaction({
+      kind: "expense",
+      amount: data.amount,
+      concept: data.concept,
+      account: data.account,
+    });
+  }, [addManualTransaction]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -134,6 +145,9 @@ export default function ExpenseScreen() {
                     size={22}
                     color={BCO.muted}
                   />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setManualModalVisible(true)}>
+                  <Octicons name="plus-circle" size={22} color={BCO.muted} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -282,6 +296,17 @@ export default function ExpenseScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <ManualTransactionModal
+        visible={manualModalVisible}
+        title="Agregar egreso manual"
+        amountLabel="Monto del egreso"
+        ctaLabel="Guardar egreso"
+        accentColor={Colors.red}
+        kind="expense"
+        onClose={() => setManualModalVisible(false)}
+        onSave={handleSaveManualExpense}
+      />
     </SafeAreaView>
   );
 }

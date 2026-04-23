@@ -32,12 +32,32 @@ export type Transaction = {
   updated_at: string;
 };
 
+export type CreateTransactionPayload = {
+  type: string;
+  amount: number;
+  account?: string | null;
+  account_to?: string | null;
+  merchant?: string | null;
+  person?: string | null;
+  date?: string | null;
+  time?: string | null;
+  debit_credit?: "debito" | "credito";
+};
+
 export const api = {
   baseUrl: API_BASE_URL,
 
   async getTransactions(): Promise<{ transactions: Transaction[] }> {
     return this.get<{ transactions: Transaction[] }>(
       "/api/transactions",
+      true,
+    );
+  },
+
+  async createTransaction(payload: CreateTransactionPayload): Promise<{ transaction: Transaction }> {
+    return this.post<{ transaction: Transaction }>(
+      "/api/transactions",
+      payload,
       true,
     );
   },

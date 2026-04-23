@@ -20,6 +20,11 @@ class TransactionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $user = $request->attributes->get('auth_user');
+        if (! $user) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $validated = $request->validate([
             'type' => 'required|string',
             'amount' => 'required|numeric',
@@ -29,9 +34,14 @@ class TransactionController extends Controller
             'person' => 'nullable|string',
             'date' => 'nullable|string',
             'time' => 'nullable|string',
+            'debit_credit' => 'nullable|in:debito,credito',
         ]);
 
-        $transaction = $request->user()->transactions()->create($validated);
+        $transaction = Transaction::create([
+            ...$validated,
+            'user_id' => $user->id,
+            'debit_credit' => $validated['debit_credit'] ?? 'debito',
+        ]);
 
         return response()->json(['transaction' => $transaction], 201);
     }
@@ -65,6 +75,7 @@ class TransactionController extends Controller
         ]);
 
         $transaction->update($validated);
+
         return response()->json(['transaction' => $transaction]);
     }
 
@@ -76,6 +87,7 @@ class TransactionController extends Controller
         }
 
         $transaction->delete();
+
         return response()->json(null, 204);
     }
 }

@@ -1,6 +1,7 @@
 import { AccountCard } from "@/components/AccountCard";
 import { AccountSkeleton } from "@/components/AccountSkeleton";
 import { AnnualLineChart } from "@/components/AnnualLineChart";
+import { ManualTransactionModal } from "@/components/ManualTransactionModal";
 import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { styles } from "@/styles/income";
@@ -15,7 +16,7 @@ import {
 import { confirmSignOut } from "@/utils/session";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Image } from "expo-image";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../_layout";
@@ -26,7 +27,8 @@ export default function IncomeScreen() {
 
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { incomeAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
+  const { incomeAccounts, loading, addManualTransaction } = useTransactions(Boolean(auth?.isAuthenticated));
+  const [manualModalVisible, setManualModalVisible] = useState(false);
   const incomeAnnual = useMemo(
     () => buildAnnualSeriesFromAccounts(incomeAccounts),
     [incomeAccounts],
@@ -45,6 +47,15 @@ export default function IncomeScreen() {
   const incomeScale = useMemo(() => {
     return buildScale(incomeChartData.map((point) => point.value));
   }, [incomeChartData]);
+
+  const handleSaveManualIncome = useCallback(async (data: { amount: number; concept: string; account: string }) => {
+    await addManualTransaction({
+      kind: "income",
+      amount: data.amount,
+      concept: data.concept,
+      account: data.account,
+    });
+  }, [addManualTransaction]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -83,6 +94,9 @@ export default function IncomeScreen() {
                     size={22}
                     color={BCO.muted}
                   />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setManualModalVisible(true)}>
+                  <Octicons name="plus-circle" size={22} color={BCO.muted} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -151,6 +165,17 @@ export default function IncomeScreen() {
           />
         </View>
       </ScrollView>
+
+      <ManualTransactionModal
+        visible={manualModalVisible}
+        title="Agregar ingreso manual"
+        amountLabel="Monto del ingreso"
+        ctaLabel="Guardar ingreso"
+        accentColor={Colors.green}
+        kind="income"
+        onClose={() => setManualModalVisible(false)}
+        onSave={handleSaveManualIncome}
+      />
     </SafeAreaView>
   );
 }

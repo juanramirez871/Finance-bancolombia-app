@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import type { UiTransaction } from "@/interfaces/transactions";
 import { api, type Transaction as ApiTransaction } from "@/utils/api";
 
+type ManualTransactionInput = {
+  kind: "income" | "expense";
+  amount: number;
+  concept?: string;
+  account?: string;
+  date?: string;
+  time?: string;
+};
+
 function formatDate(dateStr: string | null): string {
 
   if (!dateStr) return "";
@@ -59,6 +68,12 @@ function formatLabel(t: ApiTransaction): string {
 
     case "pago_no_exitoso":
       return `Pago fallido ${t.merchant}`;
+
+    case "ingreso_manual":
+      return t.person?.trim() || "Ingreso";
+
+    case "egreso_manual":
+      return t.merchant?.trim() || "Egreso";
 
     case "retiro":
       return "Retiro cajero";
@@ -149,15 +164,37 @@ export function useTransactions(enabled = true) {
     }
   }, [fetchTransactions]);
 
+  const addManualTransaction = useCallback(async (input: ManualTransactionInput) => {
+    const now = new Date();
+    const fallbackDate = now.toISOString().slice(0, 10);
+    const fallbackTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const concept = input.concept?.trim() || "Manual";
+    const account = input.account?.trim() || null;
+
+    await api.createTransaction({
+      type: input.kind === "income" ? "ingreso_manual" : "egreso_manual",
+      amount: input.amount,
+      account,
+      account_to: null,
+      merchant: input.kind === "expense" ? concept : null,
+      person: input.kind === "income" ? concept : null,
+      date: input.date ?? fallbackDate,
+      time: input.time ?? fallbackTime,
+      debit_credit: "debito",
+    });
+
+    await fetchTransactions();
+  }, [fetchTransactions]);
+
   useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
 
   const incomeTxs = transactions.filter((t) =>
-    ["recibido_qr", "paypal_recibido"].includes(t.type),
+    ["recibido_qr", "paypal_recibido", "ingreso_manual"].includes(t.type),
   );
   const expenseTxs = transactions.filter((t) =>
-    ["compra", "transferencia", "retiro", "avance", "pago_no_exitoso"].includes(t.type),
+    ["compra", "transferencia", "retiro", "avance", "pago_no_exitoso", "egreso_manual"].includes(t.type),
   );
 
   const incomeTransactions = useMemo(
@@ -229,6 +266,7 @@ export function useTransactions(enabled = true) {
     importing,
     importResult,
     importEmails,
+    addManualTransaction,
     refresh: fetchTransactions,
   };
 }

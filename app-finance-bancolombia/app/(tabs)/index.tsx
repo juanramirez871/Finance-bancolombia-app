@@ -13,7 +13,6 @@ import {
   formatCompactCOP,
   formatCOP,
 } from "@/utils/financeMetrics";
-import { confirmSignOut } from "@/utils/session";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Image } from "expo-image";
 import { useCallback, useContext, useMemo, useState } from "react";
@@ -89,9 +88,6 @@ export default function IncomeScreen() {
                 </Text>
               )}
               <View style={{ flexDirection: "row", gap: 16 }}>
-                <TouchableOpacity onPress={() => confirmSignOut(auth)}>
-                  <Octicons name="sign-out" size={22} color={BCO.muted} />
-                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setBalanceVisible(!balanceVisible)}
                 >

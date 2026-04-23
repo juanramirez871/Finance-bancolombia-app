@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import React from "react";
+import Octicons from "@expo/vector-icons/Octicons";
 
 import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
@@ -54,6 +55,15 @@ export default function TabLayout() {
               style={{ width: 28, height: 28, tintColor: color }}
               contentFit="contain"
             />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Configuración",
+          tabBarIcon: ({ color }) => (
+            <Octicons name="gear" size={24} color={color} />
           ),
         }}
       />

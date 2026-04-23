@@ -225,6 +225,15 @@ class GmailService
         $paypalAccountTo = $this->extractPaypalAccountFromRawBody($textToParse);
         $transaction = $this->parseTransaction($textToParse, $snippet, $emailDate);
 
+        if ($transaction === null && str_contains(strtolower($from), 'bancolombia')) {
+            Log::debug('GmailService unmatched bancolombia email', [
+                'message_id' => $messageId,
+                'from' => $from,
+                'snippet' => $this->normalizeEmailText($snippet),
+                'body_excerpt' => mb_substr($this->normalizeEmailText($textToParse), 0, 400),
+            ]);
+        }
+
         if ($transaction && $paypalAccountTo && ($transaction['account_to'] ?? null) === null) {
             $transaction['account_to'] = $paypalAccountTo;
         }

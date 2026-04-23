@@ -1,4 +1,5 @@
 import { Colors } from "@/constants/theme";
+import Octicons from "@expo/vector-icons/Octicons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,7 +25,11 @@ type ManualTransactionModalProps = {
   accentColor: string;
   kind: "income" | "expense";
   onClose: () => void;
-  onSave: (data: { amount: number; concept: string; account: string }) => Promise<void>;
+  onSave: (data: {
+    amount: number;
+    concept: string;
+    account: string;
+  }) => Promise<void>;
 };
 
 export function ManualTransactionModal({
@@ -65,7 +70,11 @@ export function ManualTransactionModal({
       return;
     }
 
-    setAmount(new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(numeric));
+    setAmount(
+      new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(
+        numeric,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -119,7 +128,10 @@ export function ManualTransactionModal({
       }).start();
     };
 
-    const onKeyboardShow = (event: { endCoordinates?: { height?: number }; duration?: number }) => {
+    const onKeyboardShow = (event: {
+      endCoordinates?: { height?: number };
+      duration?: number;
+    }) => {
       const height = event.endCoordinates?.height ?? 0;
       animateKeyboardInset(height, event.duration ?? 220);
     };
@@ -128,8 +140,10 @@ export function ManualTransactionModal({
       animateKeyboardInset(0, event?.duration ?? 200);
     };
 
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
     const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
     const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
@@ -177,7 +191,9 @@ export function ManualTransactionModal({
       reset();
       onClose();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "No se pudo guardar");
+      setError(
+        saveError instanceof Error ? saveError.message : "No se pudo guardar",
+      );
       setSaving(false);
     }
   };
@@ -201,10 +217,13 @@ export function ManualTransactionModal({
           style={[modalStyles.sheetHost, { paddingBottom: keyboardInset }]}
         >
           <Animated.View
-            style={[modalStyles.card, { transform: [{ translateY: sheetTranslateY }] }]}
+            style={[
+              modalStyles.card,
+              { transform: [{ translateY: sheetTranslateY }] },
+            ]}
           >
             <Pressable onPress={() => {}}>
-              <Text style={modalStyles.title}>{title}</Text>
+              <View style={modalStyles.handle} />
 
               <ScrollView
                 keyboardShouldPersistTaps="handled"
@@ -213,38 +232,61 @@ export function ManualTransactionModal({
               >
                 <View style={modalStyles.field}>
                   <Text style={modalStyles.label}>{amountLabel}</Text>
-                  <TextInput
-                    value={amount}
-                    onChangeText={handleAmountChange}
-                    placeholder="Ej: 200.000"
-                    keyboardType="numeric"
-                    placeholderTextColor="#8a8a8a"
-                    style={modalStyles.input}
-                  />
+                  <View style={modalStyles.inputShell}>
+                    <View style={modalStyles.inputPrefix}>
+                      <Text style={modalStyles.prefixText}>$</Text>
+                    </View>
+                    <TextInput
+                      value={amount}
+                      onChangeText={handleAmountChange}
+                      placeholder="Ej: 200.000"
+                      keyboardType="numeric"
+                      placeholderTextColor="#8a8a8a"
+                      style={modalStyles.input}
+                    />
+                  </View>
                 </View>
 
                 <View style={modalStyles.field}>
-                  <Text style={modalStyles.label}>{kind === "income" ? "Origen" : "Comercio"}</Text>
-                  <TextInput
-                    value={concept}
-                    onChangeText={setConcept}
-                    placeholder={kind === "income" ? "Ej: Freelance" : "Ej: Mercado"}
-                    placeholderTextColor="#8a8a8a"
-                    style={modalStyles.input}
-                  />
+                  <Text style={modalStyles.label}>Cuenta</Text>
+                  <View style={modalStyles.inputShell}>
+                    <View style={modalStyles.inputPrefix}>
+                      <Octicons name="credit-card" size={14} color="#a9a9b4" />
+                    </View>
+                    <TextInput
+                      value={account}
+                      onChangeText={setAccount}
+                      placeholder="Ej: 9095"
+                      keyboardType="number-pad"
+                      placeholderTextColor="#8a8a8a"
+                      style={modalStyles.input}
+                      maxLength={8}
+                    />
+                  </View>
                 </View>
 
                 <View style={modalStyles.field}>
-                  <Text style={modalStyles.label}>Cuenta (ultimos 4)</Text>
-                  <TextInput
-                    value={account}
-                    onChangeText={setAccount}
-                    placeholder="Ej: 9095"
-                    keyboardType="number-pad"
-                    placeholderTextColor="#8a8a8a"
-                    style={modalStyles.input}
-                    maxLength={8}
-                  />
+                  <Text style={modalStyles.label}>
+                    {kind === "income" ? "Origen" : "Comercio"}
+                  </Text>
+                  <View style={modalStyles.inputShell}>
+                    <View style={modalStyles.inputPrefix}>
+                      <Octicons
+                        name={kind === "income" ? "person" : "briefcase"}
+                        size={14}
+                        color="#a9a9b4"
+                      />
+                    </View>
+                    <TextInput
+                      value={concept}
+                      onChangeText={setConcept}
+                      placeholder={
+                        kind === "income" ? "Ej: Freelance" : "Ej: Mercado"
+                      }
+                      placeholderTextColor="#8a8a8a"
+                      style={modalStyles.input}
+                    />
+                  </View>
                 </View>
 
                 {error ? <Text style={modalStyles.error}>{error}</Text> : null}
@@ -259,7 +301,10 @@ export function ManualTransactionModal({
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[modalStyles.primaryButton, { backgroundColor: accentColor }]}
+                    style={[
+                      modalStyles.primaryButton,
+                      { backgroundColor: accentColor },
+                    ]}
                     onPress={handleSave}
                     disabled={saving}
                   >
@@ -288,47 +333,82 @@ const modalStyles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
   },
   sheetHost: {
     flex: 1,
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: "#1f1f24",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 18,
+    backgroundColor: "#17181f",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 10,
     borderWidth: 1,
-    borderColor: "#2b2b33",
+    borderColor: "#2f3240",
     gap: 12,
-    paddingBottom: 24,
+    paddingBottom: 26,
     maxHeight: "85%",
   },
+  handle: {
+    width: 42,
+    height: 5,
+    borderRadius: 999,
+    alignSelf: "center",
+    backgroundColor: "#5f6375",
+    marginBottom: 8,
+  },
   formContent: {
-    gap: 12,
+    gap: 14,
+    paddingTop: 4,
   },
   title: {
     color: Colors.white,
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
+  },
+  subtitle: {
+    color: "#9aa0b3",
+    fontSize: 13,
+    marginTop: -4,
   },
   field: {
-    gap: 6,
+    gap: 7,
   },
   label: {
-    color: "#c4c4cd",
+    color: "#b8bece",
     fontSize: 13,
+    fontWeight: "600",
+  },
+  inputShell: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#232533",
+    borderWidth: 1,
+    borderColor: "#363a4f",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  inputPrefix: {
+    width: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRightWidth: 1,
+    borderRightColor: "#363a4f",
+    paddingVertical: 12,
+  },
+  prefixText: {
+    color: "#d8dcef",
+    fontSize: 16,
+    fontWeight: "700",
   },
   input: {
-    backgroundColor: "#2a2a31",
-    borderWidth: 1,
-    borderColor: "#3a3a44",
-    borderRadius: 10,
     color: Colors.white,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 15,
+    flex: 1,
   },
   error: {
     color: Colors.red,
@@ -339,28 +419,29 @@ const modalStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
-    marginTop: 6,
+    marginTop: 8,
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#4a4a56",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderColor: "#4f556c",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    backgroundColor: "#232533",
   },
   secondaryText: {
-    color: "#d3d3dc",
-    fontWeight: "600",
+    color: "#dde2f2",
+    fontWeight: "700",
   },
   primaryButton: {
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minWidth: 110,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    minWidth: 140,
     alignItems: "center",
   },
   primaryText: {
     color: Colors.white,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 });

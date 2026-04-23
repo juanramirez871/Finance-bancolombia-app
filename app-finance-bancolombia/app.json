@@ -13,10 +13,16 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.juan098.Finance-bancolombia"
+      "bundleIdentifier": "com.juan098.Finance-bancolombia",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "userInterfaceStyle": "dark",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#21211f",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -57,7 +63,7 @@
     },
     "extra": {
       "googleClientId": "233110526860-h6dgcett1pm6apgishnp1oqbt506brn0.apps.googleusercontent.com",
-      "apiBaseUrl": "https://seagull-glad-cheaply.ngrok-free.app"
+      "apiBaseUrl": "http://127.0.0.1:8000"
     }
   }
 }

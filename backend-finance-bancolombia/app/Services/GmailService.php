@@ -14,12 +14,15 @@ class GmailService
     private const FROM_ADDRESSES = [
         'alertasynotificaciones@an.notificacionesbancolombia.com',
         'alertasynotificaciones@bancolombia.com.co',
+        'notificacionesbancolombia.com',
+        'bancolombia.com.co',
         'service@intl.paypal.com',
     ];
 
     private const PATTERNS = [
         'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.,]+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
         'compra_bancolombia' => '/Bancolombia:\s*Compraste\s+(?:COP|\$)\s*([\d.,]+)\s+en\s+(.+?)\s+con\s+tu\s+(T\.Cred|T\.Deb)\s+\*(\d+),?\s*el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/i',
+        'recibir_transferencia_llave' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+).*?\bel\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
         'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.,]+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
         'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
@@ -128,12 +131,20 @@ class GmailService
         $excludedMessageIdsMap = array_fill_keys($excludedMessageIds, true);
         $excludedCounter = 0;
 
+        try {
+            $afterDate = Carbon::parse($startDate)->subDay()->format('Y/m/d');
+            $beforeDate = Carbon::parse($endDate)->addDay()->format('Y/m/d');
+        } catch (\Throwable $e) {
+            $afterDate = $startDate;
+            $beforeDate = $endDate;
+        }
+
         $fromQueries = collect(self::FROM_ADDRESSES)->map(
             fn ($addr) => "from:{$addr}"
         )->implode(' OR ');
 
         $query = http_build_query([
-            'q' => "({$fromQueries}) after:{$startDate} before:{$endDate}",
+            'q' => "({$fromQueries}) after:{$afterDate} before:{$beforeDate}",
             'maxResults' => 100,
             'sort' => 'newer',
         ]);
@@ -300,7 +311,8 @@ class GmailService
 
     private function parseTransaction(string $text, string $snippet = '', ?string $emailDate = null): ?array
     {
-        $textToParse = $text ?: $snippet;
+        $textToParse = $this->normalizeEmailText($text ?: $snippet);
+        $normalizedSnippet = $this->normalizeEmailText($snippet);
         if (! $textToParse) {
             return null;
         }
@@ -311,15 +323,28 @@ class GmailService
             }
         }
 
-        if ($snippet && $text !== $snippet) {
+        if ($normalizedSnippet && $textToParse !== $normalizedSnippet) {
             foreach (self::PATTERNS as $type => $pattern) {
-                if (preg_match($pattern, $snippet, $matches)) {
-                    return $this->buildTransaction($type, $matches, $emailDate, $snippet);
+                if (preg_match($pattern, $normalizedSnippet, $matches)) {
+                    return $this->buildTransaction($type, $matches, $emailDate, $normalizedSnippet);
                 }
             }
         }
 
         return null;
+    }
+
+    private function normalizeEmailText(string $rawText): string
+    {
+        if ($rawText === '') {
+            return '';
+        }
+
+        $text = str_replace(["=\r\n", "=\n", '=3D'], ['', '', '='], $rawText);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/', ' ', $text);
+
+        return trim($text ?? '');
     }
 
     private function buildTransaction(string $type, array $matches, ?string $emailDate = null, string $snippet = ''): array
@@ -386,6 +411,17 @@ class GmailService
                 $account = $matches[3];
                 $merchant = null;
                 $person = trim($matches[2]);
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
+            case 'recibir_transferencia_llave':
+                $amount = $this->parseCurrencyAmount($matches[2]);
+                $date = $this->normalizeDateFormat($matches[4]);
+                $time = $matches[5];
+                $account = $matches[3];
+                $merchant = null;
+                $person = trim($matches[1]);
                 $accountTo = null;
                 $debitCredit = 'credito';
                 break;
@@ -462,6 +498,7 @@ class GmailService
             'transferencia' => 'transferencia',
             'retiro' => 'retiro',
             'recibir_qr' => 'recibido_qr',
+            'recibir_transferencia_llave' => 'recibido_qr',
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
             'pago_no_exitoso_tarjeta' => 'pago_no_exitoso',
@@ -519,6 +556,19 @@ class GmailService
         $wholeAmount = preg_replace('/[.,]/', '', $cleanAmount);
 
         return (float) ($wholeAmount ?: '0');
+    }
+
+    private function normalizeDateFormat(?string $rawDate): ?string
+    {
+        if (! $rawDate) {
+            return null;
+        }
+
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{2})$/', $rawDate, $matches)) {
+            return sprintf('%s/%s/20%s', $matches[1], $matches[2], $matches[3]);
+        }
+
+        return $rawDate;
     }
 
     private function extractPaypalAccountFromRawBody(string $rawBody): ?string

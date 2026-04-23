@@ -19,6 +19,7 @@ class GmailService
 
     private const PATTERNS = [
         'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.,]+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
+        'compra_bancolombia' => '/Bancolombia:\s*Compraste\s+(?:COP|\$)\s*([\d.,]+)\s+en\s+(.+?)\s+con\s+tu\s+(T\.Cred|T\.Deb)\s+\*(\d+),?\s*el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/i',
         'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.,]+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
         'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
@@ -328,6 +329,17 @@ class GmailService
                 $debitCredit = $matches[3] === 'T.Cred' ? 'credito' : 'debito';
                 break;
 
+            case 'compra_bancolombia':
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $matches[5];
+                $time = $matches[6];
+                $account = $matches[4];
+                $merchant = trim($matches[2]);
+                $person = null;
+                $accountTo = null;
+                $debitCredit = $matches[3] === 'T.Cred' ? 'credito' : 'debito';
+                break;
+
             case 'transferencia':
                 $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $matches[4];
@@ -429,6 +441,7 @@ class GmailService
 
         $typeMap = [
             'compra' => 'compra',
+            'compra_bancolombia' => 'compra',
             'transferencia' => 'transferencia',
             'retiro' => 'retiro',
             'recibir_qr' => 'recibido_qr',

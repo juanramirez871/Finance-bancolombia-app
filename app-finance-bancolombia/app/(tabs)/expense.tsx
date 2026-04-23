@@ -360,7 +360,7 @@ export default function ExpenseScreen() {
             {expenseCategoryAnnual.data.length ? (
               <AnnualLineChart
                 data={expenseCategoryAnnual.data}
-                color={Colors.green}
+                color={Colors.purple}
                 maxValue={expenseCategoryAnnual.scale.maxValue}
                 stepValue={expenseCategoryAnnual.scale.stepValue}
                 formatValue={formatCompactCOP}
@@ -440,7 +440,7 @@ export default function ExpenseScreen() {
                 {accountAnnual ? (
                   <AnnualLineChart
                     data={accountAnnual.categoryData}
-                    color={Colors.green}
+                    color={Colors.purple}
                     maxValue={accountAnnual.categoryScale.maxValue}
                     stepValue={accountAnnual.categoryScale.stepValue}
                     formatValue={formatCompactCOP}

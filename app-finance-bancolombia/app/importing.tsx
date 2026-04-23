@@ -4,13 +4,13 @@ import { api } from "@/utils/api";
 import { useRouter } from "expo-router";
 import { AuthContext } from "./_layout";
 import { useContext, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 
 const PHASES = {
   starting: "Preparando importacion...",
-  importing: "Importando correos bancarios...",
+  importing: "Importando movimientos...",
   finalizing: "Finalizando y cargando movimientos...",
 } as const;
 
@@ -27,6 +27,16 @@ export default function ImportingScreen() {
   const [total, setTotal] = useState(0);
   const startedAt = useRef(Date.now());
   const hasServerProgressRef = useRef(false);
+  const animatedProgress = useRef(new Animated.Value(4)).current;
+
+  useEffect(() => {
+    Animated.timing(animatedProgress, {
+      toValue: progress,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [animatedProgress, progress]);
 
   useEffect(() => {
     if (!auth?.isAuthenticated) {
@@ -117,7 +127,17 @@ export default function ImportingScreen() {
         <Text style={styles.subtitle}>{PHASES[phase]}</Text>
 
         <View style={styles.track}>
-          <View style={[styles.bar, { width: `${progress}%` }]} />
+          <Animated.View
+            style={[
+              styles.bar,
+              {
+                width: animatedProgress.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ["0%", "100%"],
+                }),
+              },
+            ]}
+          />
         </View>
 
         <Text style={styles.percent}>{progress}%</Text>

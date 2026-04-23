@@ -46,6 +46,7 @@ export function AnnualLineChart({
   const axisWidth = 52;
   const pointSpacing = 76;
   const chartWidth = Math.max(width - 72, data.length * pointSpacing);
+  const trailingScrollSpace = 140;
   const contentWidth = axisWidth + chartWidth;
   const chartHeight = 240;
   const plotHeight = 150;
@@ -181,7 +182,7 @@ export function AnnualLineChart({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ width: chartWidth }}
+          contentContainerStyle={{ width: chartWidth + trailingScrollSpace }}
           style={{ flex: 1 }}
           onScrollBeginDrag={hideTooltip}
           scrollEventThrottle={16}

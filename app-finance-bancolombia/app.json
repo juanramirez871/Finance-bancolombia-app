@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Finance-bancolombia",
-    "slug": "Finance-bancolombia",
+    "name": "BancoTrack",
+    "slug": "BancoTrack",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -18,7 +18,7 @@
     "android": {
       "userInterfaceStyle": "dark",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#21211f",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -45,7 +45,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#FDDA24"
+          "backgroundColor": "#21211f"
         }
       ],
       "@react-native-community/datetimepicker",

@@ -124,6 +124,12 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.googleButtonText}>Continuar con Google</Text>
         </TouchableOpacity>
+        <Image
+          source={require("@/assets/images/banner.svg")}
+          style={styles.banner}
+          contentFit="contain"
+          pointerEvents="none"
+        />
       </View>
     </SafeAreaView>
   );
@@ -133,6 +139,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: BCO.bg,
+  },
+  banner: {
+    width: "300%",
+    height: 150,
+    transform: [{ translateY: 50 }, { translateX: 65 }],
   },
   container: {
     flex: 1,

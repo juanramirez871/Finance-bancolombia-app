@@ -25,9 +25,9 @@ class EmailController extends Controller
             }
 
             $emails = $this->gmail->listEmails($user, $year);
+
             return response()->json(['emails' => $emails]);
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -43,13 +43,57 @@ class EmailController extends Controller
                 return response()->json(['error' => 'Gmail not connected'], 400);
             }
 
-            $emails = $this->gmail->listEmails($user, $year);
+            $existingEmailIds = Transaction::query()
+                ->where('user_id', $user->id)
+                ->whereNotNull('email_id')
+                ->pluck('email_id')
+                ->all();
+
+            $skippedByExistingEmailId = 0;
+            $emails = $this->gmail->listEmails($user, $year, $existingEmailIds, $skippedByExistingEmailId);
             $saved = 0;
-            $skipped = 0;
+            $skipped = $skippedByExistingEmailId;
 
             foreach ($emails as $email) {
                 $transaction = $email['transaction'] ?? null;
                 if (! $transaction) {
+                    continue;
+                }
+
+                $emailId = $email['id'] ?? null;
+
+                $normalizedDebitCredit = $transaction['type'] === Transaction::TYPE_RECIBIDO_QR
+                    ? 'credito'
+                    : (in_array(($transaction['debit_credit'] ?? null), ['debito', 'credito'], true)
+                        ? $transaction['debit_credit']
+                        : 'debito');
+
+                $payload = [
+                    'user_id' => $user->id,
+                    'email_id' => $emailId,
+                    'type' => $transaction['type'],
+                    'amount' => $transaction['amount'],
+                    'account' => $transaction['account'],
+                    'account_to' => $transaction['account_to'],
+                    'merchant' => $transaction['merchant'],
+                    'person' => $transaction['person'],
+                    'date' => $transaction['date'],
+                    'time' => $transaction['time'],
+                    'debit_credit' => $normalizedDebitCredit,
+                ];
+
+                if ($emailId) {
+                    $record = Transaction::firstOrCreate(
+                        ['user_id' => $user->id, 'email_id' => $emailId],
+                        $payload,
+                    );
+
+                    if ($record->wasRecentlyCreated) {
+                        $saved++;
+                    } else {
+                        $skipped++;
+                    }
+
                     continue;
                 }
 
@@ -65,18 +109,7 @@ class EmailController extends Controller
                     continue;
                 }
 
-                Transaction::create([
-                    'user_id' => $user->id,
-                    'type' => $transaction['type'],
-                    'amount' => $transaction['amount'],
-                    'account' => $transaction['account'],
-                    'account_to' => $transaction['account_to'],
-                    'merchant' => $transaction['merchant'],
-                    'person' => $transaction['person'],
-                    'date' => $transaction['date'],
-                    'time' => $transaction['time'],
-                    'debit_credit' => $transaction['debit_credit'] ?? 'debito',
-                ]);
+                Transaction::create($payload);
                 $saved++;
             }
 
@@ -84,8 +117,7 @@ class EmailController extends Controller
                 'saved' => $saved,
                 'skipped' => $skipped,
             ]);
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

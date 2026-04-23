@@ -97,11 +97,17 @@ class GmailService
         return $user->gmail_access_token;
     }
 
-    public function listEmails(User $user, int $year): array
-    {
+    public function listEmails(
+        User $user,
+        int $year,
+        array $excludedMessageIds = [],
+        ?int &$skippedExcludedMessageIds = null,
+    ): array {
         $token = $this->getValidAccessToken($user);
         $startDate = "{$year}/01/01";
         $endDate = "{$year}/12/31";
+        $excludedMessageIdsMap = array_fill_keys($excludedMessageIds, true);
+        $excludedCounter = 0;
 
         $fromQueries = collect(self::FROM_ADDRESSES)->map(
             fn ($addr) => "from:{$addr}"
@@ -131,6 +137,13 @@ class GmailService
 
         $emails = [];
         foreach ($messages['messages'] as $msg) {
+            $messageId = $msg['id'] ?? null;
+            if ($messageId && isset($excludedMessageIdsMap[$messageId])) {
+                $excludedCounter++;
+
+                continue;
+            }
+
             $email = $this->getEmailDetails($token, $msg['id'], $msg['threadId'] ?? null);
             if ($email['transaction'] !== null) {
                 $emails[] = $email;
@@ -139,8 +152,13 @@ class GmailService
 
         Log::debug('GmailService listEmails result', [
             'emails_count' => count($emails),
+            'excluded_count' => $excludedCounter,
             'transactions' => collect($emails)->pluck('transaction.type')->toArray(),
         ]);
+
+        if ($skippedExcludedMessageIds !== null) {
+            $skippedExcludedMessageIds = $excludedCounter;
+        }
 
         return $emails;
     }
@@ -408,8 +426,17 @@ class GmailService
             'paypal_recibido_snippet' => 'paypal_recibido',
         ];
 
+        $mappedType = $typeMap[$type] ?? $type;
+        $normalizedDebitCredit = in_array($debitCredit, ['debito', 'credito'], true)
+            ? $debitCredit
+            : 'debito';
+
+        if ($mappedType === 'recibido_qr') {
+            $normalizedDebitCredit = 'credito';
+        }
+
         return [
-            'type' => $typeMap[$type] ?? $type,
+            'type' => $mappedType,
             'amount' => (float) $amount,
             'account' => $account,
             'account_to' => $accountTo,
@@ -417,7 +444,7 @@ class GmailService
             'person' => $person,
             'date' => $date,
             'time' => $time,
-            'debit_credit' => $debitCredit ?? 'debito',
+            'debit_credit' => $normalizedDebitCredit,
         ];
     }
 

@@ -31,18 +31,25 @@ function AuthRedirect({ isAuthenticated }: { isAuthenticated: boolean }) {
   const isLoginRoute = pathname === "/login";
 
   if (!isAuthenticated && !isLoginRoute) return <Redirect href="/login" />;
-  if (isAuthenticated && isLoginRoute) return <Redirect href="/importing" />;
+  if (isAuthenticated && isLoginRoute) return null;
 
   return null;
 }
 
 export default function RootLayout() {
+  const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkToken = async () => {
       try {
+        if (pathname === "/login") {
+          await SecureStore.deleteItemAsync("authToken");
+          setIsAuthenticated(false);
+          return;
+        }
+
         const token = await SecureStore.getItemAsync("authToken");
         if (token) setIsAuthenticated(true);
       }
@@ -55,7 +62,7 @@ export default function RootLayout() {
     };
 
     checkToken();
-  }, []);
+  }, [pathname]);
 
   const signIn = useCallback(async (token: string) => {
     try {

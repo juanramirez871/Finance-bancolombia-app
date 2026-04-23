@@ -18,7 +18,7 @@ import { toDate } from "@/utils/income";
 export default function IncomeScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { incomeAccounts, loading } = useTransactions();
+  const { incomeAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
 
   const incomeAnnual = useMemo(() => {
     const monthlyTotals: Record<string, number> = {};

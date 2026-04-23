@@ -2,7 +2,8 @@ import { BCO } from "@/constants/income";
 import { Colors } from "@/constants/theme";
 import { api } from "@/utils/api";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { AuthContext } from "./_layout";
+import { useContext, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,6 +17,7 @@ type Phase = keyof typeof PHASES;
 
 export default function ImportingScreen() {
   const router = useRouter();
+  const auth = useContext(AuthContext);
   const [progress, setProgress] = useState(4);
   const [phase, setPhase] = useState<Phase>("starting");
   const [result, setResult] = useState<{ saved: number; skipped: number } | null>(null);
@@ -26,6 +28,11 @@ export default function ImportingScreen() {
   const hasServerProgressRef = useRef(false);
 
   useEffect(() => {
+    if (!auth?.isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+
     let mounted = true;
 
     const timer = setInterval(() => {
@@ -100,7 +107,7 @@ export default function ImportingScreen() {
       mounted = false;
       clearInterval(timer);
     };
-  }, [router]);
+  }, [auth?.isAuthenticated, router]);
 
   return (
     <SafeAreaView style={styles.safe}>

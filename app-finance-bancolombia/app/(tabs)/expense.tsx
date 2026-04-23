@@ -87,7 +87,7 @@ function buildAnnualSeries(transactions: Transaction[]) {
 export default function ExpenseScreen() {
   const auth = useContext(AuthContext);
   const { balanceVisible, toggle: setBalanceVisible } = useBalanceVisible();
-  const { expenseAccounts, loading } = useTransactions();
+  const { expenseAccounts, loading } = useTransactions(Boolean(auth?.isAuthenticated));
 
   const expenseAnnual = useMemo(() => {
     const monthlyTotals: Record<string, number> = {};

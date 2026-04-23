@@ -112,7 +112,7 @@ function mapToUiTransaction(t: ApiTransaction): UiTransaction {
   };
 }
 
-export function useTransactions() {
+export function useTransactions(enabled = true) {
   const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -122,6 +122,12 @@ export function useTransactions() {
   } | null>(null);
 
   const fetchTransactions = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      setTransactions([]);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await api.getTransactions();
@@ -133,7 +139,7 @@ export function useTransactions() {
     finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   const importEmails = useCallback(async (year?: number) => {
     try {

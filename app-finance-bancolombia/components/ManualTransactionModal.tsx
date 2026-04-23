@@ -1,4 +1,5 @@
 import { Colors } from "@/constants/theme";
+import { BCO } from "@/constants/expense";
 import Octicons from "@expo/vector-icons/Octicons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,6 +36,16 @@ type ManualTransactionModalProps = {
 };
 
 type PickerTarget = "concept" | "account" | null;
+
+const MODAL_COLORS = {
+  overlay: "rgba(48, 45, 43, 0.55)",
+  sheet: BCO.card,
+  border: BCO.divider,
+  muted: BCO.muted,
+  text: BCO.text,
+  inputBg: BCO.bg,
+  link: Colors.yellow,
+};
 
 export function ManualTransactionModal({
   visible,
@@ -109,18 +120,6 @@ export function ManualTransactionModal({
   const openPicker = (target: Exclude<PickerTarget, null>) => {
     Keyboard.dismiss();
     setPickerTarget(target);
-  };
-
-  const useCustomValue = () => {
-    if (pickerTarget === "concept") {
-      setIsCustomConcept(true);
-      setConcept("");
-    } else if (pickerTarget === "account") {
-      setIsCustomAccount(true);
-      setAccount("");
-    }
-
-    setPickerTarget(null);
   };
 
   const toggleAccountInputMode = () => {
@@ -337,7 +336,7 @@ export function ManualTransactionModal({
                       onChangeText={handleAmountChange}
                       placeholder="Ej: 200.000"
                       keyboardType="numeric"
-                      placeholderTextColor="#8a8a8a"
+                      placeholderTextColor={MODAL_COLORS.muted}
                       style={modalStyles.input}
                     />
                   </View>
@@ -357,14 +356,14 @@ export function ManualTransactionModal({
                           toggleAccountInputMode();
                         }}
                       >
-                        <Octicons name="credit-card" size={14} color="#a9a9b4" />
+                        <Octicons name="credit-card" size={14} color={MODAL_COLORS.muted} />
                       </Pressable>
                       <Text
                         style={[modalStyles.selectText, !account && modalStyles.selectPlaceholder]}
                       >
                         {account || "Seleccionar cuenta"}
                       </Text>
-                      <Octicons name="chevron-down" size={14} color="#a9a9b4" />
+                      <Octicons name="chevron-down" size={14} color={MODAL_COLORS.muted} />
                     </Pressable>
                   ) : (
                     <View style={modalStyles.inputShell}>
@@ -372,14 +371,14 @@ export function ManualTransactionModal({
                         style={modalStyles.inputPrefix}
                         onPress={toggleAccountInputMode}
                       >
-                        <Octicons name="credit-card" size={14} color="#a9a9b4" />
+                        <Octicons name="credit-card" size={14} color={MODAL_COLORS.muted} />
                       </Pressable>
                       <TextInput
                         value={account}
                         onChangeText={setAccount}
                         placeholder="Ej: 9095"
                         keyboardType="number-pad"
-                        placeholderTextColor="#8a8a8a"
+                        placeholderTextColor={MODAL_COLORS.muted}
                         style={modalStyles.input}
                         maxLength={8}
                       />
@@ -406,7 +405,7 @@ export function ManualTransactionModal({
                         <Octicons
                           name={kind === "income" ? "person" : "briefcase"}
                           size={14}
-                          color="#a9a9b4"
+                          color={MODAL_COLORS.muted}
                         />
                       </Pressable>
                       <Text
@@ -414,7 +413,7 @@ export function ManualTransactionModal({
                       >
                         {concept || (kind === "income" ? "Seleccionar origen" : "Seleccionar comercio")}
                       </Text>
-                      <Octicons name="chevron-down" size={14} color="#a9a9b4" />
+                      <Octicons name="chevron-down" size={14} color={MODAL_COLORS.muted} />
                     </Pressable>
                   ) : (
                     <View style={modalStyles.inputShell}>
@@ -425,14 +424,14 @@ export function ManualTransactionModal({
                         <Octicons
                           name={kind === "income" ? "person" : "briefcase"}
                           size={14}
-                          color="#a9a9b4"
+                          color={MODAL_COLORS.muted}
                         />
                       </Pressable>
                       <TextInput
                         value={concept}
                         onChangeText={setConcept}
                         placeholder={kind === "income" ? "Ej: Freelance" : "Ej: Mercado"}
-                        placeholderTextColor="#8a8a8a"
+                        placeholderTextColor={MODAL_COLORS.muted}
                         style={modalStyles.input}
                       />
                     </View>
@@ -527,20 +526,20 @@ const modalStyles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    backgroundColor: MODAL_COLORS.overlay,
   },
   sheetHost: {
     flex: 1,
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: "#17181f",
+    backgroundColor: MODAL_COLORS.sheet,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
     paddingTop: 10,
     borderWidth: 1,
-    borderColor: "#2f3240",
+    borderColor: MODAL_COLORS.border,
     gap: 12,
     paddingBottom: 26,
     maxHeight: "85%",
@@ -550,7 +549,7 @@ const modalStyles = StyleSheet.create({
     height: 5,
     borderRadius: 999,
     alignSelf: "center",
-    backgroundColor: "#5f6375",
+    backgroundColor: MODAL_COLORS.muted,
     marginBottom: 8,
   },
   formContent: {
@@ -563,7 +562,7 @@ const modalStyles = StyleSheet.create({
     fontWeight: "800",
   },
   subtitle: {
-    color: "#9aa0b3",
+    color: MODAL_COLORS.muted,
     fontSize: 13,
     marginTop: -4,
   },
@@ -571,16 +570,16 @@ const modalStyles = StyleSheet.create({
     gap: 7,
   },
   label: {
-    color: "#b8bece",
+    color: MODAL_COLORS.muted,
     fontSize: 13,
     fontWeight: "600",
   },
   inputShell: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#232533",
+    backgroundColor: MODAL_COLORS.inputBg,
     borderWidth: 1,
-    borderColor: "#363a4f",
+    borderColor: MODAL_COLORS.border,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -588,9 +587,9 @@ const modalStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#232533",
+    backgroundColor: MODAL_COLORS.inputBg,
     borderWidth: 1,
-    borderColor: "#363a4f",
+    borderColor: MODAL_COLORS.border,
     borderRadius: 12,
     paddingRight: 12,
   },
@@ -600,18 +599,18 @@ const modalStyles = StyleSheet.create({
     flex: 1,
   },
   selectPlaceholder: {
-    color: "#8a8a8a",
+    color: MODAL_COLORS.muted,
   },
   inputPrefix: {
     width: 42,
     alignItems: "center",
     justifyContent: "center",
     borderRightWidth: 1,
-    borderRightColor: "#363a4f",
+    borderRightColor: MODAL_COLORS.border,
     paddingVertical: 12,
   },
   prefixText: {
-    color: "#d8dcef",
+    color: MODAL_COLORS.text,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -629,7 +628,7 @@ const modalStyles = StyleSheet.create({
   },
   linkText: {
     marginTop: 4,
-    color: "#c8d1f9",
+    color: MODAL_COLORS.link,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -641,14 +640,14 @@ const modalStyles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#4f556c",
+    borderColor: MODAL_COLORS.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 11,
-    backgroundColor: "#232533",
+    backgroundColor: MODAL_COLORS.inputBg,
   },
   secondaryText: {
-    color: "#dde2f2",
+    color: MODAL_COLORS.text,
     fontWeight: "700",
   },
   primaryButton: {
@@ -665,14 +664,14 @@ const modalStyles = StyleSheet.create({
   pickerOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: MODAL_COLORS.overlay,
   },
   pickerCard: {
-    backgroundColor: "#17181f",
+    backgroundColor: MODAL_COLORS.sheet,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: "#2f3240",
+    borderColor: MODAL_COLORS.border,
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 26,
@@ -693,34 +692,16 @@ const modalStyles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#2d3140",
+    borderBottomColor: MODAL_COLORS.border,
   },
   pickerOptionText: {
-    color: "#dde2f2",
+    color: MODAL_COLORS.text,
     fontSize: 14,
     flex: 1,
     paddingRight: 12,
   },
   pickerOptionTextActive: {
     color: Colors.white,
-    fontWeight: "700",
-  },
-  customOption: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#4f556c",
-    borderRadius: 12,
-    backgroundColor: "#232533",
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  customOptionText: {
-    color: "#d6dbec",
-    fontSize: 13,
     fontWeight: "700",
   },
 });

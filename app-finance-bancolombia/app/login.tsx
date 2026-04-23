@@ -85,9 +85,9 @@ export default function LoginScreen() {
         return;
       }
 
-      auth?.signIn(data.token);
+      await auth?.signIn(data.token);
       AuthSession.dismiss();
-      router.replace("/");
+      router.replace("/importing");
     }
     catch (error) {
       console.log("Caught error:", error);

@@ -3,7 +3,6 @@ import { Redirect, Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import * as SystemUI from "expo-system-ui";
 import "react-native-reanimated";
 import { Colors } from "@/constants/theme";
 
@@ -23,8 +22,8 @@ const BancolombiaTheme = {
 
 export const AuthContext = createContext<{
   isAuthenticated: boolean;
-  signIn: (token: string) => void;
-  signOut: () => void;
+  signIn: (token: string) => Promise<void>;
+  signOut: () => Promise<void>;
 } | null>(null);
 
 function AuthRedirect({ isAuthenticated }: { isAuthenticated: boolean }) {
@@ -32,7 +31,7 @@ function AuthRedirect({ isAuthenticated }: { isAuthenticated: boolean }) {
   const isLoginRoute = pathname === "/login";
 
   if (!isAuthenticated && !isLoginRoute) return <Redirect href="/login" />;
-  if (isAuthenticated && isLoginRoute) return <Redirect href="/" />;
+  if (isAuthenticated && isLoginRoute) return <Redirect href="/importing" />;
 
   return null;
 }
@@ -91,6 +90,7 @@ export default function RootLayout() {
         <AuthRedirect isAuthenticated={isAuthenticated} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="login" />
+          <Stack.Screen name="importing" />
           <Stack.Screen name="(tabs)" />
         </Stack>
       </AuthContext.Provider>

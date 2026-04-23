@@ -92,10 +92,64 @@ class EmailController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
             ]);
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function syncStream(Request $request): StreamedResponse|JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+        if (! $user?->gmail_access_token) {
+            return response()->json(['error' => 'Gmail not connected'], 400);
+        }
+
+        return response()->stream(function () use ($user): void {
+            try {
+                $startDate = $user->last_email_sync_at
+                    ? Carbon::parse($user->last_email_sync_at)->format('Y/m/d')
+                    : Carbon::now()->startOfYear()->format('Y/m/d');
+                $endDate = Carbon::now()->format('Y/m/d');
+
+                $this->sendSseEvent('start', [
+                    'message' => 'Sync started',
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                ]);
+
+                $result = $this->importForUserInDateRange(
+                    $user->id,
+                    $user,
+                    $startDate,
+                    $endDate,
+                    function (array $progress): void {
+                        $this->sendSseEvent('progress', $progress);
+                    },
+                );
+
+                if (($result['saved'] ?? 0) > 0 || ! $user->last_email_sync_at) {
+                    $user->last_email_sync_at = Carbon::now();
+                    $user->save();
+                }
+
+                $this->sendSseEvent('done', [
+                    'saved' => $result['saved'],
+                    'skipped' => $result['skipped'],
+                    'total' => $result['total'],
+                    'processed' => $result['processed'],
+                    'percent' => 100,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                ]);
+            } catch (\Throwable $e) {
+                $this->sendSseEvent('error', ['message' => $e->getMessage()]);
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 
     public function importStream(Request $request): StreamedResponse|JsonResponse
@@ -133,8 +187,7 @@ class EmailController extends Controller
                     'processed' => $result['processed'],
                     'percent' => 100,
                 ]);
-            }
-            catch (\Throwable $e) {
+            } catch (\Throwable $e) {
                 $this->sendSseEvent('error', ['message' => $e->getMessage()]);
             }
         }, 200, [

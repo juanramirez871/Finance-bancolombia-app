@@ -1,6 +1,6 @@
 import { importingStyles as styles } from "@/styles/importing";
 import { api } from "@/utils/api";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { AuthContext } from "./_layout";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
@@ -17,6 +17,8 @@ type Phase = keyof typeof PHASES;
 
 export default function ImportingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const isSyncMode = params.mode === "sync";
   const auth = useContext(AuthContext);
   const [progress, setProgress] = useState(4);
   const [phase, setPhase] = useState<Phase>("starting");
@@ -61,17 +63,25 @@ export default function ImportingScreen() {
 
     const runImport = async () => {
       try {
-        const currentYear = new Date().getFullYear();
         setPhase("importing");
 
-        const response = await api.importEmailsStream(currentYear, (serverProgress) => {
-
+        const onServerProgress = (serverProgress: {
+          processed: number;
+          total: number;
+          saved: number;
+          skipped: number;
+          percent: number;
+        }) => {
           if (!mounted) return;
           hasServerProgressRef.current = true;
           setProcessed(serverProgress.processed);
           setTotal(serverProgress.total);
           setProgress((current) => Math.max(current, Math.min(serverProgress.percent, 99)));
-        });
+        };
+
+        const response = isSyncMode
+          ? await api.syncEmailsStream(onServerProgress)
+          : await api.importEmailsStream(new Date().getFullYear(), onServerProgress);
 
         if (!mounted) return;
         setResult(response);
@@ -104,7 +114,7 @@ export default function ImportingScreen() {
       mounted = false;
       clearInterval(timer);
     };
-  }, [auth?.isAuthenticated, router]);
+  }, [auth?.isAuthenticated, isSyncMode, router]);
 
   return (
     <SafeAreaView style={styles.safe}>

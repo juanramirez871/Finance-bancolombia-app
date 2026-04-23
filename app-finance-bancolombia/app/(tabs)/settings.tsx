@@ -1,11 +1,11 @@
 import { BCO } from "@/constants/expense";
 import { Colors } from "@/constants/theme";
-import { api } from "@/utils/api";
 import { confirmSignOut } from "@/utils/session";
 import Octicons from "@expo/vector-icons/Octicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useContext, useMemo, useState } from "react";
-import { Alert, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext, TransactionFilterContext } from "../_layout";
 
@@ -36,10 +36,10 @@ const formatLabelDate = (dateValue: string): string =>
   });
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const auth = useContext(AuthContext);
   const transactionFilter = useContext(TransactionFilterContext);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
-  const [syncing, setSyncing] = useState(false);
 
   const fromDate = useMemo(
     () => parseIsoDate(transactionFilter?.startDate ?? formatIso(new Date())),
@@ -78,28 +78,6 @@ export default function SettingsScreen() {
     }
 
     await transactionFilter.resetToCurrentYear();
-  };
-
-  const handleSync = async () => {
-    if (syncing) {
-      return;
-    }
-
-    try {
-      setSyncing(true);
-      const result = await api.syncEmails();
-      Alert.alert(
-        "Sincronización completada",
-        `Rango: ${result.start_date} a ${result.end_date}\nGuardadas: ${result.saved}\nOmitidas: ${result.skipped}`,
-      );
-    } catch (error) {
-      Alert.alert(
-        "Error de sincronización",
-        error instanceof Error ? error.message : "No se pudo sincronizar.",
-      );
-    } finally {
-      setSyncing(false);
-    }
   };
 
   return (
@@ -146,17 +124,12 @@ export default function SettingsScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
-          onPress={() => {
-            void handleSync();
-          }}
+          style={styles.syncButton}
+          onPress={() => router.push("/importing?mode=sync")}
           activeOpacity={0.9}
-          disabled={syncing}
         >
           <Octicons name="sync" size={18} color={Colors.black} />
-          <Text style={styles.syncButtonText}>
-            {syncing ? "Sincronizando..." : "Sincronizar correos"}
-          </Text>
+          <Text style={styles.syncButtonText}>Sincronizar correos</Text>
         </TouchableOpacity>
 
         {pickerTarget !== null && Platform.OS === "android" ? (
@@ -334,9 +307,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-  },
-  syncButtonDisabled: {
-    opacity: 0.65,
   },
   syncButtonText: {
     color: Colors.black,

@@ -67,6 +67,20 @@ export const api = {
     return this.post<{ saved: number; skipped: number }>(endpoint, {}, true);
   },
 
+  async syncEmails(): Promise<{
+    saved: number;
+    skipped: number;
+    start_date: string;
+    end_date: string;
+  }> {
+    return this.post<{
+      saved: number;
+      skipped: number;
+      start_date: string;
+      end_date: string;
+    }>("/api/email/sync", {}, true);
+  },
+
   async importEmailsStream(
     year: number,
     onProgress: (progress: {

@@ -105,9 +105,26 @@ class GmailService
         array $excludedMessageIds = [],
         ?int &$skippedExcludedMessageIds = null,
     ): array {
-        $token = $this->getValidAccessToken($user);
         $startDate = "{$year}/01/01";
         $endDate = "{$year}/12/31";
+
+        return $this->listEmailsByDateRange(
+            $user,
+            $startDate,
+            $endDate,
+            $excludedMessageIds,
+            $skippedExcludedMessageIds,
+        );
+    }
+
+    public function listEmailsByDateRange(
+        User $user,
+        string $startDate,
+        string $endDate,
+        array $excludedMessageIds = [],
+        ?int &$skippedExcludedMessageIds = null,
+    ): array {
+        $token = $this->getValidAccessToken($user);
         $excludedMessageIdsMap = array_fill_keys($excludedMessageIds, true);
         $excludedCounter = 0;
 

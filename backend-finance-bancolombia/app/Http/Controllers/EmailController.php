@@ -6,6 +6,7 @@ use App\Models\Transaction;
 use App\Services\GmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmailController extends Controller
@@ -46,11 +47,53 @@ class EmailController extends Controller
 
             $result = $this->importForUser($user->id, $user, $year);
 
+            if (($result['saved'] ?? 0) > 0 || ! $user->last_email_sync_at) {
+                $user->last_email_sync_at = Carbon::now();
+                $user->save();
+            }
+
             return response()->json([
                 'saved' => $result['saved'],
                 'skipped' => $result['skipped'],
             ]);
         } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function sync(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->attributes->get('auth_user');
+            if (! $user?->gmail_access_token) {
+                return response()->json(['error' => 'Gmail not connected'], 400);
+            }
+
+            $startDate = $user->last_email_sync_at
+                ? Carbon::parse($user->last_email_sync_at)->format('Y/m/d')
+                : Carbon::now()->startOfYear()->format('Y/m/d');
+
+            $endDate = Carbon::now()->format('Y/m/d');
+            $result = $this->importForUserInDateRange(
+                $user->id,
+                $user,
+                $startDate,
+                $endDate,
+            );
+
+            if (($result['saved'] ?? 0) > 0 || ! $user->last_email_sync_at) {
+                $user->last_email_sync_at = Carbon::now();
+                $user->save();
+            }
+
+            return response()->json([
+                'saved' => $result['saved'],
+                'skipped' => $result['skipped'],
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+        }
+        catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -78,6 +121,11 @@ class EmailController extends Controller
                     },
                 );
 
+                if (($result['saved'] ?? 0) > 0 || ! $user->last_email_sync_at) {
+                    $user->last_email_sync_at = Carbon::now();
+                    $user->save();
+                }
+
                 $this->sendSseEvent('done', [
                     'saved' => $result['saved'],
                     'skipped' => $result['skipped'],
@@ -85,7 +133,8 @@ class EmailController extends Controller
                     'processed' => $result['processed'],
                     'percent' => 100,
                 ]);
-            } catch (\Throwable $e) {
+            }
+            catch (\Throwable $e) {
                 $this->sendSseEvent('error', ['message' => $e->getMessage()]);
             }
         }, 200, [
@@ -98,6 +147,25 @@ class EmailController extends Controller
 
     private function importForUser(int $userId, mixed $user, int $year, ?callable $onProgress = null): array
     {
+        $startDate = sprintf('%d/01/01', $year);
+        $endDate = sprintf('%d/12/31', $year);
+
+        return $this->importForUserInDateRange(
+            $userId,
+            $user,
+            $startDate,
+            $endDate,
+            $onProgress,
+        );
+    }
+
+    private function importForUserInDateRange(
+        int $userId,
+        mixed $user,
+        string $startDate,
+        string $endDate,
+        ?callable $onProgress = null,
+    ): array {
         $existingEmailIds = Transaction::query()
             ->where('user_id', $userId)
             ->whereNotNull('email_id')
@@ -105,7 +173,13 @@ class EmailController extends Controller
             ->all();
 
         $skippedByExistingEmailId = 0;
-        $emails = $this->gmail->listEmails($user, $year, $existingEmailIds, $skippedByExistingEmailId);
+        $emails = $this->gmail->listEmailsByDateRange(
+            $user,
+            $startDate,
+            $endDate,
+            $existingEmailIds,
+            $skippedByExistingEmailId,
+        );
 
         $saved = 0;
         $skipped = $skippedByExistingEmailId;

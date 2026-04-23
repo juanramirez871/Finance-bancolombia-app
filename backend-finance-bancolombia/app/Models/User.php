@@ -20,6 +20,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'gmail_expires_at' => 'datetime',
+            'last_email_sync_at' => 'datetime',
         ];
     }
 }

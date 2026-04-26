@@ -39,6 +39,10 @@ export default function LoginScreen() {
         redirectUri: REDIRECT_URI,
         usePKCE: true,
         responseType: AuthSession.ResponseType.Code,
+        extraParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
       });
 
       const result = await request.promptAsync(discovery);

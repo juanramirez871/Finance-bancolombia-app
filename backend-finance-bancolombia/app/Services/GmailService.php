@@ -67,12 +67,17 @@ class GmailService
             throw new \RuntimeException('No refresh token available');
         }
 
-        $response = Http::asForm()->post(self::TOKEN_URL, [
+        $params = [
             'client_id' => $this->clientId,
-            'client_secret' => $this->clientSecret,
             'grant_type' => 'refresh_token',
             'refresh_token' => $user->gmail_refresh_token,
-        ]);
+        ];
+
+        if ($this->clientSecret) {
+            $params['client_secret'] = $this->clientSecret;
+        }
+
+        $response = Http::asForm()->post(self::TOKEN_URL, $params);
 
         if (! $response->successful()) {
             Log::error('Gmail token refresh failed', [

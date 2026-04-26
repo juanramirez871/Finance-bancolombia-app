@@ -8,8 +8,7 @@ import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } 
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext, TransactionFilterContext } from "../_layout";
-
-type PickerTarget = "from" | "to" | null;
+import type { DatePickerTarget } from "@/interfaces/screens/settings";
 
 const formatIso = (date: Date): string => {
   const year = date.getFullYear();
@@ -39,7 +38,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const auth = useContext(AuthContext);
   const transactionFilter = useContext(TransactionFilterContext);
-  const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
+  const [pickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
 
   const fromDate = useMemo(
     () => parseIsoDate(transactionFilter?.startDate ?? formatIso(new Date())),
@@ -101,7 +100,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.rangeRow}>
-            <TouchableOpacity style={styles.rangeItem} onPress={() => setPickerTarget("from")}>
+            <TouchableOpacity style={styles.rangeItem} onPress={() => setDatePickerTarget("from")}>
               <Text style={styles.rangeLabel}>Desde</Text>
               <View style={styles.rangeValueRow}>
                 <Octicons name="calendar" size={13} color={Colors.yellow} />
@@ -111,7 +110,7 @@ export default function SettingsScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.rangeItem} onPress={() => setPickerTarget("to")}>
+            <TouchableOpacity style={styles.rangeItem} onPress={() => setDatePickerTarget("to")}>
               <Text style={styles.rangeLabel}>Hasta</Text>
               <View style={styles.rangeValueRow}>
                 <Octicons name="calendar" size={13} color={Colors.yellow} />
@@ -139,7 +138,7 @@ export default function SettingsScreen() {
             display="default"
             onChange={(_, selected) => {
               void applyDateSelection(selected ?? null);
-              setPickerTarget(null);
+              setDatePickerTarget(null);
             }}
             maximumDate={maxDate}
             minimumDate={minDate}
@@ -152,19 +151,19 @@ export default function SettingsScreen() {
             animationType="fade"
             visible
             presentationStyle="overFullScreen"
-            onRequestClose={() => setPickerTarget(null)}
+            onRequestClose={() => setDatePickerTarget(null)}
           >
-            <Pressable style={styles.pickerOverlay} onPress={() => setPickerTarget(null)}>
+            <Pressable style={styles.pickerOverlay} onPress={() => setDatePickerTarget(null)}>
               <Pressable style={styles.pickerSheet} onPress={() => {}}>
                 <View style={styles.pickerHeader}>
-                  <TouchableOpacity onPress={() => setPickerTarget(null)} hitSlop={12}>
+                  <TouchableOpacity onPress={() => setDatePickerTarget(null)} hitSlop={12}>
                     <Text style={styles.pickerCancel}>Cancelar</Text>
                   </TouchableOpacity>
                   <Text style={styles.pickerTitle}>{pickerTarget === "from" ? "Desde" : "Hasta"}</Text>
                   <TouchableOpacity
                     onPress={async () => {
                       await applyDateSelection(pickerValue);
-                      setPickerTarget(null);
+                      setDatePickerTarget(null);
                     }}
                     hitSlop={12}
                   >

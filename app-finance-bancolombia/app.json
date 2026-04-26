@@ -5,10 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": [
-      "financebancolombia",
-      "com.googleusercontent.apps.233110526860-h6dgcett1pm6apgishnp1oqbt506brn0"
-    ],
+    "scheme": "financebancolombia",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
@@ -63,7 +60,7 @@
     },
     "extra": {
       "googleClientId": "233110526860-h6dgcett1pm6apgishnp1oqbt506brn0.apps.googleusercontent.com",
-      "apiBaseUrl": "http://127.0.0.1:8000"
+      "apiBaseUrl": "http://18.218.41.89:8000"
     }
   }
 }

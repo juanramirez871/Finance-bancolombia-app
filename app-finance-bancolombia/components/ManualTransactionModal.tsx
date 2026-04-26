@@ -1,5 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { BCO } from "@/constants/expense";
+import type { ManualTransactionModalProps, ModalPickerTarget } from "@/interfaces/components/modal";
 import Octicons from "@expo/vector-icons/Octicons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,25 +18,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-type ManualTransactionModalProps = {
-  visible: boolean;
-  title: string;
-  amountLabel: string;
-  ctaLabel: string;
-  accentColor: string;
-  kind: "income" | "expense";
-  conceptOptions?: string[];
-  accountOptions?: string[];
-  onClose: () => void;
-  onSave: (data: {
-    amount: number;
-    concept: string;
-    account: string;
-  }) => Promise<void>;
-};
-
-type PickerTarget = "concept" | "account" | null;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -67,7 +49,7 @@ export function ManualTransactionModal({
   const [account, setAccount] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
+  const [pickerTarget, setPickerTarget] = useState<ModalPickerTarget>(null);
   const [isCustomConcept, setIsCustomConcept] = useState(conceptOptions.length === 0);
   const [isCustomAccount, setIsCustomAccount] = useState(accountOptions.length === 0);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -119,7 +101,7 @@ export function ManualTransactionModal({
   const isCustomActive = pickerTarget === "concept" ? isCustomConcept : isCustomAccount;
   const selectedValue = pickerTarget === "concept" ? concept : account;
 
-  const openPicker = (target: Exclude<PickerTarget, null>) => {
+  const openPicker = (target: Exclude<ModalPickerTarget, null>) => {
     Keyboard.dismiss();
     setPickerTarget(target);
   };

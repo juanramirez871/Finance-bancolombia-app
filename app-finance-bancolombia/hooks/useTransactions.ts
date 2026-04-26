@@ -1,16 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useContext } from "react";
-import type { UiTransaction } from "@/interfaces/transactions";
+import type { UiTransaction, ManualTransactionInput } from "@/interfaces/transactions";
 import { api, type Transaction as ApiTransaction } from "@/utils/api";
 import { TransactionFilterContext } from "@/app/_layout";
-
-type ManualTransactionInput = {
-  kind: "income" | "expense";
-  amount: number;
-  concept?: string;
-  account?: string;
-  date?: string;
-  time?: string;
-};
 
 const uniqueNonEmpty = (values: Array<string | null | undefined>) => {
   const normalized = values

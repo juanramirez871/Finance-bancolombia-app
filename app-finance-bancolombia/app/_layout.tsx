@@ -1,3 +1,9 @@
+const _warn = console.warn.bind(console);
+console.warn = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].includes("Linking found multiple possible URI schemes")) return;
+  _warn(...args);
+};
+
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Redirect, Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -8,14 +14,8 @@ import * as LocalAuthentication from "expo-local-authentication";
 import "react-native-reanimated";
 import { Colors } from "@/constants/theme";
 import type { AuthContextValue } from "@/interfaces/auth";
+import type { TransactionFilterContextValue } from "@/interfaces/contexts";
 import { Text, TouchableOpacity, View } from "react-native";
-
-type TransactionFilterContextValue = {
-  startDate: string;
-  endDate: string;
-  setRange: (startDate: string, endDate: string) => Promise<void>;
-  resetToCurrentYear: () => Promise<void>;
-};
 
 const TX_FILTER_START_KEY = "txFilterStartDate";
 const TX_FILTER_END_KEY = "txFilterEndDate";

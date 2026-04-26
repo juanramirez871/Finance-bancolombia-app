@@ -1,4 +1,5 @@
 import { importingStyles as styles } from "@/styles/importing";
+import { PHASES, type Phase } from "@/constants/importing";
 import { api } from "@/utils/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { AuthContext } from "./_layout";
@@ -6,14 +7,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Animated, Easing, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-
-const PHASES = {
-  starting: "Preparando importacion...",
-  importing: "Importando movimientos...",
-  finalizing: "Finalizando y cargando movimientos...",
-} as const;
-
-type Phase = keyof typeof PHASES;
 
 export default function ImportingScreen() {
   const router = useRouter();

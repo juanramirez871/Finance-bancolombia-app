@@ -15,3 +15,12 @@ export interface UiAccount {
   label: string;
   transactions: UiTransaction[];
 }
+
+export type ManualTransactionInput = {
+  kind: "income" | "expense";
+  amount: number;
+  concept?: string;
+  account?: string;
+  date?: string;
+  time?: string;
+};

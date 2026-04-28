@@ -32,6 +32,8 @@ class GmailService
         'pago_no_exitoso' => '/(?:Notificación\s+Transaccional\s+)?Bancolombia:\s*tu\s+\w+\s+en\s+(.+?)\s+por\s+COP\s*([\d.,]+)\s+no\s+fue\s+exitosa,?\s+el\s+cupo\s+de\s+tu\s+T\.Credito\s+\*(\d+)\s+no\s+se\s+afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/i',
         'paypal_recibido' => '/transferir.*?\$ ?([\d,\.]+).*?COP de PayPal.*?Bancolombia\s+(\d+).*?trans/i',
         'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d,.]+)\s*COP de PayPal/',
+        'recibir_transferencia' => '/Bancolombia:.*?recibiste una transferencia por\s+\$?\s*([\d.,]+)\s+de\s+(.+?)\s+en tu cuenta\s+\*{1,2}(\d+),?\s+el\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
+        'recibir_transferencia_snippet' => '/Bancolombia:.*?recibiste una transferencia por\s+\$?\s*([\d.,]+)\s+de\s+(.+?)\s+en tu cuenta\s+\*{1,2}(\d+)/iu',
     ];
 
     public function __construct(
@@ -224,6 +226,7 @@ class GmailService
         $headers = collect($payload['headers'] ?? [])->keyBy('name');
 
         $from = optional($headers->get('From'))['value'] ?? '';
+        $subject = optional($headers->get('Subject'))['value'] ?? '';
         $snippet = $data['snippet'] ?? '';
         $emailDate = optional($headers->get('Date'))['value'] ?? null;
         $body = $this->getEmailBody($token, $messageId, $from);
@@ -231,10 +234,15 @@ class GmailService
         $paypalAccountTo = $this->extractPaypalAccountFromRawBody($textToParse);
         $transaction = $this->parseTransaction($textToParse, $snippet, $emailDate);
 
+        if ($transaction === null && $subject) {
+            $transaction = $this->parseTransaction($subject, $snippet, $emailDate);
+        }
+
         if ($transaction === null && str_contains(strtolower($from), 'bancolombia')) {
             Log::debug('GmailService unmatched bancolombia email', [
                 'message_id' => $messageId,
                 'from' => $from,
+                'subject' => $subject,
                 'snippet' => $this->normalizeEmailText($snippet),
                 'body_excerpt' => mb_substr($this->normalizeEmailText($textToParse), 0, 400),
             ]);
@@ -247,7 +255,7 @@ class GmailService
         return [
             'id' => $data['id'],
             'threadId' => $data['threadId'] ?? null,
-            'subject' => optional($headers->get('Subject'))['value'] ?? null,
+            'subject' => $subject ?: null,
             'from' => $from,
             'date' => optional($headers->get('Date'))['value'] ?? null,
             'snippet' => $snippet,
@@ -485,6 +493,28 @@ class GmailService
                 $debitCredit = 'credito';
                 break;
 
+            case 'recibir_transferencia':
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $this->normalizeDateFormat($matches[4]);
+                $time = $matches[5];
+                $account = $matches[3];
+                $merchant = null;
+                $person = trim($matches[2]);
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
+            case 'recibir_transferencia_snippet':
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $date = $parsedEmailDate['date'];
+                $time = $parsedEmailDate['time'];
+                $account = $matches[3];
+                $merchant = null;
+                $person = trim($matches[2]);
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
             case 'paypal_recibido':
                 $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $parsedEmailDate['date'];
@@ -526,6 +556,8 @@ class GmailService
             'recibir_qr' => 'recibido_qr',
             'recibir_transferencia_llave' => 'recibido_qr',
             'recibir_transferencia_llave_snippet' => 'recibido_qr',
+            'recibir_transferencia' => 'recibido_qr',
+            'recibir_transferencia_snippet' => 'recibido_qr',
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
             'pago_no_exitoso_tarjeta' => 'pago_no_exitoso',

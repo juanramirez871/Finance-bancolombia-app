@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\GmailService;
+use App\Services\TransactionParser;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -14,6 +15,7 @@ class AppServiceProvider extends ServiceProvider
                 clientId: env('GOOGLE_CLIENT_ID'),
                 clientSecret: env('GOOGLE_CLIENT_SECRET'),
                 redirectUri: env('APP_URL').'/api/email/callback',
+                parser: $app->make(TransactionParser::class),
             );
         });
     }

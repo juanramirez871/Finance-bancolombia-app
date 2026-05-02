@@ -19,29 +19,11 @@ class GmailService
         'service@intl.paypal.com',
     ];
 
-    private const PATTERNS = [
-        'compra' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Compraste COP([\d.,]+) en ([A-Za-z\s]+) con tu (T\.Cred|T\.Deb) \*(\d+),? el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
-        'compra_bancolombia' => '/Bancolombia:\s*Compraste\s+(?:COP|\$)\s*([\d.,]+)\s+en\s+(.+?)\s+con\s+tu\s+(T\.Cred|T\.Deb)\s+\*(\d+),?\s*el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/i',
-        'recibir_transferencia_llave' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+).*?\bel\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
-        'recibir_transferencia_llave_snippet' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+)/iu',
-        'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.,]+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
-        'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
-        'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
-        'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.,]+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
-        'pago_no_exitoso_tarjeta' => '/Bancolombia:\s*tu\s+compra\s+con\s+T\.cred\s+\*(\d+)\s+por\s+\$\s*([\d.,]+)\s+no\s+fue\s+exitosa,?\s+los\s+datos\s+de\s+tu\s+t\.cred\s+estan\s+incorrectos\.?\s*(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})/i',
-        'pago_no_exitoso' => '/(?:Notificación\s+Transaccional\s+)?Bancolombia:\s*tu\s+\w+\s+en\s+(.+?)\s+por\s+COP\s*([\d.,]+)\s+no\s+fue\s+exitosa,?\s+el\s+cupo\s+de\s+tu\s+T\.Credito\s+\*(\d+)\s+no\s+se\s+afecto\.?\s*(\d{2}:\d{2})\.(\d{2}\/\d{2}\/\d{4})/i',
-        'paypal_recibido' => '/transferir.*?\$ ?([\d,\.]+).*?COP de PayPal.*?Bancolombia\s+(\d+).*?trans/i',
-        'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d,.]+)\s*COP de PayPal/',
-        'recibir_transferencia' => '/Bancolombia:.*?recibiste una transferencia por\s+\$?\s*([\d.,]+)\s+de\s+(.+?)\s+en tu cuenta\s+\*{1,2}(\d+),?\s+el\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
-        'recibir_transferencia_snippet' => '/Bancolombia:.*?recibiste una transferencia por\s+\$?\s*([\d.,]+)\s+de\s+(.+?)\s+en tu cuenta\s+\*{1,2}(\d+)/iu',
-        'recibir_pago' => '/Bancolombia:.*?recibiste un pago\s+\S+\s+de\s+(.+?)\s+por\s+\$?\s*([\d.,]+)\s+en tu cuenta.*?el\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
-        'recibir_pago_snippet' => '/Bancolombia:.*?recibiste un pago\s+\S+\s+de\s+(.+?)\s+por\s+\$?\s*([\d.,]+)\s+en tu cuenta/iu',
-    ];
-
     public function __construct(
         private readonly string $clientId,
         private readonly string $clientSecret,
         private readonly string $redirectUri,
+        private readonly TransactionParser $parser,
     ) {}
 
     public function exchangeCodeForTokens(string $code): array
@@ -118,13 +100,10 @@ class GmailService
         array $excludedMessageIds = [],
         ?int &$skippedExcludedMessageIds = null,
     ): array {
-        $startDate = "{$year}/01/01";
-        $endDate = "{$year}/12/31";
-
         return $this->listEmailsByDateRange(
             $user,
-            $startDate,
-            $endDate,
+            "{$year}/01/01",
+            "{$year}/12/31",
             $excludedMessageIds,
             $skippedExcludedMessageIds,
         );
@@ -234,10 +213,10 @@ class GmailService
         $body = $this->getEmailBody($token, $messageId, $from);
         $textToParse = $body ?: '';
         $paypalAccountTo = $this->extractPaypalAccountFromRawBody($textToParse);
-        $transaction = $this->parseTransaction($textToParse, $snippet, $emailDate);
+        $transaction = $this->parser->parse($textToParse, $snippet, $emailDate);
 
         if ($transaction === null && $subject) {
-            $transaction = $this->parseTransaction($subject, $snippet, $emailDate);
+            $transaction = $this->parser->parse($subject, $snippet, $emailDate);
         }
 
         if ($transaction === null && str_contains(strtolower($from), 'bancolombia')) {
@@ -245,8 +224,8 @@ class GmailService
                 'message_id' => $messageId,
                 'from' => $from,
                 'subject' => $subject,
-                'snippet' => $this->normalizeEmailText($snippet),
-                'body_excerpt' => mb_substr($this->normalizeEmailText($textToParse), 0, 400),
+                'snippet' => $this->parser->normalize($snippet),
+                'body_excerpt' => mb_substr($this->parser->normalize($textToParse), 0, 400),
             ]);
         }
 
@@ -267,57 +246,54 @@ class GmailService
 
     private function getEmailBody(string $token, string $messageId, string $from): ?string
     {
-        if ($from && str_contains(strtolower($from), 'paypal.com')) {
-            $response = Http::withToken($token)
-                ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$messageId}", [
-                    'format' => 'full',
-                ]);
+        if (! $from || ! str_contains(strtolower($from), 'paypal.com')) {
+            return null;
+        }
 
-            if (! $response->successful()) {
-                Log::debug('GmailService getEmailBody failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
+        $response = Http::withToken($token)
+            ->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/{$messageId}", [
+                'format' => 'full',
+            ]);
 
-                return null;
+        if (! $response->successful()) {
+            Log::debug('GmailService getEmailBody failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $data = $response->json();
+        $payload = $data['payload'] ?? [];
+        $body = $payload['body'] ?? [];
+        $dataValue = $body['data'] ?? null;
+
+        if ($dataValue) {
+            $decoded = quoted_printable_decode($this->base64UrlDecode($dataValue));
+            $clean = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $decoded));
+
+            return html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        foreach ($payload['parts'] ?? [] as $part) {
+            $mimeType = $part['mimeType'] ?? '';
+            $partData = $part['body']['data'] ?? null;
+
+            if (! $partData) {
+                continue;
             }
 
-            $data = $response->json();
-            $payload = $data['payload'] ?? [];
-            $body = $payload['body'] ?? [];
-            $dataValue = $body['data'] ?? null;
-
-            if ($dataValue) {
-                $decoded = quoted_printable_decode($this->base64UrlDecode($dataValue));
-                $clean = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $decoded));
-                $clean = html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-                return $clean;
+            if ($mimeType === 'text/plain') {
+                return quoted_printable_decode($this->base64UrlDecode($partData));
             }
 
-            $parts = $payload['parts'] ?? [];
-            foreach ($parts as $part) {
-                $mimeType = $part['mimeType'] ?? '';
-                if ($mimeType === 'text/plain') {
-                    $partBody = $part['body'] ?? [];
-                    $partData = $partBody['data'] ?? null;
-                    if ($partData) {
-                        return quoted_printable_decode($this->base64UrlDecode($partData));
-                    }
-                }
+            if ($mimeType === 'text/html') {
+                $html = quoted_printable_decode($this->base64UrlDecode($partData));
+                $text = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $html));
+                $text = preg_replace('/\s+/', ' ', $text);
 
-                if ($mimeType === 'text/html') {
-                    $partBody = $part['body'] ?? [];
-                    $partData = $partBody['data'] ?? null;
-                    if ($partData) {
-                        $html = quoted_printable_decode($this->base64UrlDecode($partData));
-                        $text = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $html));
-                        $text = preg_replace('/\s+/', ' ', $text);
-                        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-                        return $text;
-                    }
-                }
+                return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             }
         }
 
@@ -334,355 +310,18 @@ class GmailService
         return base64_decode(strtr($data, '-_', '+/'));
     }
 
-    private function parseTransaction(string $text, string $snippet = '', ?string $emailDate = null): ?array
-    {
-        $textToParse = $this->normalizeEmailText($text ?: $snippet);
-        $normalizedSnippet = $this->normalizeEmailText($snippet);
-        if (! $textToParse) {
-            return null;
-        }
-
-        foreach (self::PATTERNS as $type => $pattern) {
-            if (preg_match($pattern, $textToParse, $matches)) {
-                return $this->buildTransaction($type, $matches, $emailDate, $snippet);
-            }
-        }
-
-        if ($normalizedSnippet && $textToParse !== $normalizedSnippet) {
-            foreach (self::PATTERNS as $type => $pattern) {
-                if (preg_match($pattern, $normalizedSnippet, $matches)) {
-                    return $this->buildTransaction($type, $matches, $emailDate, $normalizedSnippet);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeEmailText(string $rawText): string
-    {
-        if ($rawText === '') {
-            return '';
-        }
-
-        $text = str_replace(["=\r\n", "=\n", '=3D'], ['', '', '='], $rawText);
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = preg_replace('/\s+/', ' ', $text);
-
-        return trim($text ?? '');
-    }
-
-    private function buildTransaction(string $type, array $matches, ?string $emailDate = null, string $snippet = ''): array
-    {
-        $parsedEmailDate = $emailDate ? $this->parseEmailDate($emailDate) : null;
-        $debitCredit = 'debito';
-        $account = null;
-        $accountTo = null;
-        $merchant = null;
-        $person = null;
-        $date = null;
-        $time = null;
-        $amount = 0.0;
-
-        switch ($type) {
-            case 'compra':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $matches[5];
-                $time = $matches[6];
-                $account = $matches[4];
-                $merchant = trim($matches[2]);
-                $person = null;
-                $accountTo = null;
-                $debitCredit = $matches[3] === 'T.Cred' ? 'credito' : 'debito';
-                break;
-
-            case 'compra_bancolombia':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $matches[5];
-                $time = $matches[6];
-                $account = $matches[4];
-                $merchant = trim($matches[2]);
-                $person = null;
-                $accountTo = null;
-                $debitCredit = $matches[3] === 'T.Cred' ? 'credito' : 'debito';
-                break;
-
-            case 'transferencia':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $matches[4];
-                $time = $matches[5];
-                $account = $matches[2];
-                $merchant = null;
-                $person = null;
-                $accountTo = $matches[3];
-                $debitCredit = 'debito';
-                break;
-
-            case 'retiro':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $matches[4];
-                $time = $matches[5];
-                $account = $matches[3];
-                $merchant = trim($matches[2]);
-                $person = null;
-                $accountTo = null;
-                $debitCredit = 'debito';
-                break;
-
-            case 'recibir_qr':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $matches[4];
-                $time = $matches[5];
-                $account = $matches[3];
-                $merchant = null;
-                $person = trim($matches[2]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'recibir_transferencia_llave':
-                $amount = $this->parseCurrencyAmount($matches[2]);
-                $date = $this->normalizeDateFormat($matches[4]);
-                $time = $matches[5];
-                $account = $matches[3];
-                $merchant = null;
-                $person = trim($matches[1]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'recibir_transferencia_llave_snippet':
-                $amount = $this->parseCurrencyAmount($matches[2]);
-                $date = $parsedEmailDate['date'];
-                $time = $parsedEmailDate['time'];
-                $account = $matches[3];
-                $merchant = null;
-                $person = trim($matches[1]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'avance':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $matches[4];
-                $time = $matches[3];
-                $account = $matches[5];
-                $merchant = trim($matches[2]);
-                $person = null;
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'pago_no_exitoso':
-                $amount = $this->parseCurrencyAmount($matches[2]);
-                $date = $matches[5];
-                $time = $matches[4];
-                $account = $matches[3];
-                $merchant = trim($matches[1]);
-                $person = null;
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'pago_no_exitoso_tarjeta':
-                $amount = $this->parseCurrencyAmount($matches[2]);
-                $date = $matches[4];
-                $time = $matches[3];
-                $account = $matches[1];
-                $merchant = null;
-                $person = null;
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'recibir_pago':
-                $amount = $this->parseCurrencyAmount($matches[2]);
-                $date = $this->normalizeDateFormat($matches[3]);
-                $time = $matches[4];
-                $account = null;
-                $merchant = null;
-                $person = trim($matches[1]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'recibir_pago_snippet':
-                $amount = $this->parseCurrencyAmount($matches[2]);
-                $date = $parsedEmailDate['date'];
-                $time = $parsedEmailDate['time'];
-                $account = null;
-                $merchant = null;
-                $person = trim($matches[1]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'recibir_transferencia':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $this->normalizeDateFormat($matches[4]);
-                $time = $matches[5];
-                $account = $matches[3];
-                $merchant = null;
-                $person = trim($matches[2]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'recibir_transferencia_snippet':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $parsedEmailDate['date'];
-                $time = $parsedEmailDate['time'];
-                $account = $matches[3];
-                $merchant = null;
-                $person = trim($matches[2]);
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            case 'paypal_recibido':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $parsedEmailDate['date'];
-                $time = $parsedEmailDate['time'];
-                $account = null;
-                $merchant = 'PayPal';
-                $person = null;
-                $accountTo = $matches[2];
-                $debitCredit = 'credito';
-                break;
-
-            case 'paypal_recibido_snippet':
-                $amount = $this->parseCurrencyAmount($matches[1]);
-                $date = $parsedEmailDate['date'];
-                $time = $parsedEmailDate['time'];
-                $account = null;
-                $merchant = 'PayPal';
-                $person = null;
-                $accountTo = null;
-                $debitCredit = 'credito';
-                break;
-
-            default:
-                $amount = 0.0;
-                $date = null;
-                $time = null;
-                $account = null;
-                $merchant = null;
-                $person = null;
-                $accountTo = null;
-                $debitCredit = 'debito';
-        }
-
-        $typeMap = [
-            'compra' => 'compra',
-            'compra_bancolombia' => 'compra',
-            'transferencia' => 'transferencia',
-            'retiro' => 'retiro',
-            'recibir_qr' => 'recibido_qr',
-            'recibir_transferencia_llave' => 'recibido_qr',
-            'recibir_transferencia_llave_snippet' => 'recibido_qr',
-            'recibir_transferencia' => 'recibido_qr',
-            'recibir_transferencia_snippet' => 'recibido_qr',
-            'recibir_pago' => 'recibido_qr',
-            'recibir_pago_snippet' => 'recibido_qr',
-            'avance' => 'avance',
-            'pago_no_exitoso' => 'pago_no_exitoso',
-            'pago_no_exitoso_tarjeta' => 'pago_no_exitoso',
-            'paypal_recibido' => 'paypal_recibido',
-            'paypal_recibido_snippet' => 'paypal_recibido',
-        ];
-
-        $mappedType = $typeMap[$type] ?? $type;
-        $normalizedDebitCredit = in_array($debitCredit, ['debito', 'credito'], true)
-            ? $debitCredit
-            : 'debito';
-
-        if (in_array($mappedType, ['recibido_qr', 'paypal_recibido'], true)) {
-            $normalizedDebitCredit = 'debito';
-        }
-
-        return [
-            'type' => $mappedType,
-            'amount' => $amount,
-            'account' => $account,
-            'account_to' => $accountTo,
-            'merchant' => $merchant,
-            'person' => $person,
-            'date' => $date,
-            'time' => $time,
-            'debit_credit' => $normalizedDebitCredit,
-        ];
-    }
-
-    private function parseCurrencyAmount(string $rawAmount): float
-    {
-        $cleanAmount = preg_replace('/[^\d.,]/', '', trim($rawAmount));
-        if (! $cleanAmount) {
-            return 0.0;
-        }
-
-        $lastComma = strrpos($cleanAmount, ',');
-        $lastDot = strrpos($cleanAmount, '.');
-        $lastSeparator = max($lastComma === false ? -1 : $lastComma, $lastDot === false ? -1 : $lastDot);
-
-        if ($lastSeparator >= 0) {
-            $decimals = substr($cleanAmount, $lastSeparator + 1);
-            $isDecimalSeparator = preg_match('/^\d{1,2}$/', $decimals) === 1;
-
-            if ($isDecimalSeparator) {
-                $wholePart = preg_replace('/[.,]/', '', substr($cleanAmount, 0, $lastSeparator));
-                if ($wholePart === '') {
-                    $wholePart = '0';
-                }
-
-                return (float) ($wholePart.'.'.$decimals);
-            }
-        }
-
-        $wholeAmount = preg_replace('/[.,]/', '', $cleanAmount);
-
-        return (float) ($wholeAmount ?: '0');
-    }
-
-    private function normalizeDateFormat(?string $rawDate): ?string
-    {
-        if (! $rawDate) {
-            return null;
-        }
-
-        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{2})$/', $rawDate, $matches)) {
-            return sprintf('%s/%s/20%s', $matches[1], $matches[2], $matches[3]);
-        }
-
-        return $rawDate;
-    }
-
     private function extractPaypalAccountFromRawBody(string $rawBody): ?string
     {
         if (! $rawBody) {
             return null;
         }
 
-        $text = preg_replace('/<br\s*\/?>/i', "\n", $rawBody);
-        $text = strip_tags($text);
+        $text = strip_tags(preg_replace('/<br\s*\/?>/i', "\n", $rawBody));
 
         if (preg_match('/Bancolombia\s*(\d{4})/i', $text, $matches)) {
             return $matches[1];
         }
 
         return null;
-    }
-
-    private function parseEmailDate(string $emailDate): array
-    {
-        try {
-            $date = Carbon::parse($emailDate);
-
-            return [
-                'date' => $date->format('d/m/Y'),
-                'time' => $date->format('H:i'),
-            ];
-        } catch (\Throwable $e) {
-            return ['date' => null, 'time' => null];
-        }
     }
 }

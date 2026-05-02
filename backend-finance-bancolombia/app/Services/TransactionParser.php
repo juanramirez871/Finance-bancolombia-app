@@ -239,7 +239,7 @@ class TransactionParser
         return [
             'type' => $mappedType,
             'amount' => $amount,
-            'account' => $account,
+            'account' => $account ?? '3246',
             'account_to' => $accountTo,
             'merchant' => $merchant,
             'person' => $person,

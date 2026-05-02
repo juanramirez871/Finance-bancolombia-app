@@ -34,6 +34,8 @@ class GmailService
         'paypal_recibido_snippet' => '/transferir\s*\$ ?([\d,.]+)\s*COP de PayPal/',
         'recibir_transferencia' => '/Bancolombia:.*?recibiste una transferencia por\s+\$?\s*([\d.,]+)\s+de\s+(.+?)\s+en tu cuenta\s+\*{1,2}(\d+),?\s+el\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
         'recibir_transferencia_snippet' => '/Bancolombia:.*?recibiste una transferencia por\s+\$?\s*([\d.,]+)\s+de\s+(.+?)\s+en tu cuenta\s+\*{1,2}(\d+)/iu',
+        'recibir_pago' => '/Bancolombia:.*?recibiste un pago\s+\S+\s+de\s+(.+?)\s+por\s+\$?\s*([\d.,]+)\s+en tu cuenta.*?el\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
+        'recibir_pago_snippet' => '/Bancolombia:.*?recibiste un pago\s+\S+\s+de\s+(.+?)\s+por\s+\$?\s*([\d.,]+)\s+en tu cuenta/iu',
     ];
 
     public function __construct(
@@ -493,6 +495,28 @@ class GmailService
                 $debitCredit = 'credito';
                 break;
 
+            case 'recibir_pago':
+                $amount = $this->parseCurrencyAmount($matches[2]);
+                $date = $this->normalizeDateFormat($matches[3]);
+                $time = $matches[4];
+                $account = null;
+                $merchant = null;
+                $person = trim($matches[1]);
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
+            case 'recibir_pago_snippet':
+                $amount = $this->parseCurrencyAmount($matches[2]);
+                $date = $parsedEmailDate['date'];
+                $time = $parsedEmailDate['time'];
+                $account = null;
+                $merchant = null;
+                $person = trim($matches[1]);
+                $accountTo = null;
+                $debitCredit = 'credito';
+                break;
+
             case 'recibir_transferencia':
                 $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $this->normalizeDateFormat($matches[4]);
@@ -558,6 +582,8 @@ class GmailService
             'recibir_transferencia_llave_snippet' => 'recibido_qr',
             'recibir_transferencia' => 'recibido_qr',
             'recibir_transferencia_snippet' => 'recibido_qr',
+            'recibir_pago' => 'recibido_qr',
+            'recibir_pago_snippet' => 'recibido_qr',
             'avance' => 'avance',
             'pago_no_exitoso' => 'pago_no_exitoso',
             'pago_no_exitoso_tarjeta' => 'pago_no_exitoso',

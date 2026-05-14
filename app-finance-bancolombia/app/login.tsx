@@ -5,7 +5,6 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { Image } from "expo-image";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useCallback, useContext, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
@@ -14,7 +13,7 @@ import { AuthContext } from "./_layout";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID = Constants.expoConfig?.extra?.googleClientId ?? "";
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const SCOPE = "openid email profile https://www.googleapis.com/auth/gmail.readonly";
 const REDIRECT_URI = AuthSession.makeRedirectUri({
   native: "com.juan098.Finance-bancolombia:/oauth2redirect",
@@ -61,6 +60,7 @@ export default function LoginScreen() {
         return;
       }
 
+      console.log("[login] exchanging code with Google...");
       const tokenResponse = await AuthSession.exchangeCodeAsync(
         {
           clientId: GOOGLE_CLIENT_ID,
@@ -70,6 +70,7 @@ export default function LoginScreen() {
         },
         discovery,
       );
+      console.log("[login] got tokens from Google");
 
       const idToken = tokenResponse.idToken;
       if (!idToken) {
@@ -77,12 +78,14 @@ export default function LoginScreen() {
         return;
       }
 
+      console.log("[login] calling backend /api/auth/google at", api.baseUrl);
       const data = await api.post<{ token?: string }>("/api/auth/google", {
         id_token: idToken,
         access_token: tokenResponse.accessToken,
         refresh_token: tokenResponse.refreshToken,
         expires_in: tokenResponse.expiresIn,
       });
+      console.log("[login] backend responded");
 
       if (!data.token) {
         Alert.alert("Error", "Authentication failed");

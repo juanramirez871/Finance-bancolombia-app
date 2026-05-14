@@ -12,6 +12,8 @@ class TransactionParser
         'recibir_transferencia_llave' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+).*?\bel\s+(\d{2}\/\d{2}\/\d{2,4})\s+a las\s+(\d{2}:\d{2})/iu',
         'recibir_transferencia_llave_snippet' => '/Bancolombia:.*?recibiste una transferencia de\s+(.+?)\s+por\s+(?:COP|\$)\s*([\d.,]+).*?cuenta\s+\*(\d+)/iu',
         'transferencia' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Transferiste \\\$([\d.,]+) desde tu cuenta (\d+) a la cuenta \*(\d+) el (\d{2}\/\d{2}\/\d{4}) a las (\d{2}:\d{2})/',
+        'transferencia_bancolombia' => '/Bancolombia:\s*Transferiste\s+\$\s*([\d.,]+)\s+desde\s+tu\s+cuenta\s+(\d+)\s+a\s+la\s+cuenta\s+\*(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a\s+las\s+(\d{2}:\d{2})/iu',
+        'transferencia_llave' => '/Bancolombia:\s*\S+,\s*transferiste\s+\$\s*([\d.,]+)\s+a\s+la\s+llave\s+(\S+)\s+desde\s+tu\s+cuenta\s+\*(\d+)\s+a\s+(.+?)\s+el\s+(\d{2}\/\d{2}\/\d{2,4})\s+a\s+las\s+(\d{2}:\d{2})/iu',
         'retiro' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Retiraste \$?([\d.,]+)\s+en\s+(.+?)\s+de tu\s+T\.Deb\s+\*\*?(\d+)\s+el\s+(\d{2}\/\d{2}\/\d{4})\s+a las\s+(\d{2}:\d{2})/',
         'recibir_qr' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Recibiste \$?([\d.,]+)\s+por QR\s+de\s+(.+?)\s+en tu cuenta \*(.+?)\s+el\s+(\d{4}\/\d{2}\/\d{2})\s+a las\s+(\d{2}:\d{2})/',
         'avance' => '/^¡Listo! Todo salió bien con tus movimientos Bancolombia: Hiciste un avance de \$?([\d.,]+)\s+en\s+(.+?)\s+el\s+(\d{2}:\d{2})\s+(\d{2}\/\d{2}\/\d{4})\s+desde tu\s+T\.Credito\s+\*(\d+)\s+a la cuenta \*(.+?)\s+\./',
@@ -29,6 +31,8 @@ class TransactionParser
         'compra' => 'compra',
         'compra_bancolombia' => 'compra',
         'transferencia' => 'transferencia',
+        'transferencia_bancolombia' => 'transferencia',
+        'transferencia_llave' => 'transferencia',
         'retiro' => 'retiro',
         'recibir_qr' => 'recibido_qr',
         'recibir_transferencia_llave' => 'recibido_qr',
@@ -107,11 +111,21 @@ class TransactionParser
                 break;
 
             case 'transferencia':
+            case 'transferencia_bancolombia':
                 $amount = $this->parseCurrencyAmount($matches[1]);
                 $date = $matches[4];
                 $time = $matches[5];
                 $account = $matches[2];
                 $accountTo = $matches[3];
+                break;
+
+            case 'transferencia_llave':
+                $amount = $this->parseCurrencyAmount($matches[1]);
+                $accountTo = $matches[2];
+                $account = $matches[3];
+                $person = trim($matches[4]);
+                $date = $this->normalizeDateFormat($matches[5]);
+                $time = $matches[6];
                 break;
 
             case 'retiro':

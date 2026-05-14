@@ -1,13 +1,6 @@
-import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
-type ExpoConfigExtra = {
-  googleClientId?: string;
-  apiBaseUrl?: string;
-};
-
-const extra = (Constants.expoConfig?.extra ?? {}) as ExpoConfigExtra;
-const API_BASE_URL = extra.apiBaseUrl ?? "";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const getAuthToken = async (): Promise<string | null> => {
   try {
     return await SecureStore.getItemAsync("authToken");
